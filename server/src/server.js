@@ -65,7 +65,9 @@ app.use('/api/stations', analyticsRoutes);
 app.use('/api/superadmin', superadminRoutes);
 
 // In production, serve frontend build if present
-const clientDist = path.join(process.cwd(), '..', 'client', 'dist');
+const clientDist = fs.existsSync(path.join(process.cwd(), 'dist'))
+  ? path.join(process.cwd(), 'dist')
+  : path.join(__dirname, '..', '..', 'dist');
 if (fs.existsSync(clientDist)) {
   app.use(express.static(clientDist));
   app.get('*', (req, res, next) => {

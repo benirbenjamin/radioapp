@@ -95,31 +95,32 @@ The database auto-initializes all tables and seeds these demo stations on boot:
 
 ## 💻 Local Development
 
-### 1. Clone & Run Backend
+### 1. Install Dependencies
 ```bash
-cd server
 npm install
-npm start
 ```
-The server automatically creates all PostgreSQL / relational tables and seeds demo stations on port `5000`.
 
-### 2. Run Frontend
+### 2. Run Both Server & Client
 ```bash
-cd client
-npm install
 npm run dev
 ```
+This runs the Express API server (port 5000) and Vite frontend (port 3000) concurrently.
+
 Open `http://localhost:3000` to browse stations or `/admin/login` for the admin portal.
 
 ---
 
 ## ☁️ Deployment to Vercel
 
-This repository is 100% pre-configured for Vercel via `vercel.json` and `api/index.js`.
+This repository is organized as a single unified directory, 100% pre-configured for standard Vercel deployment without monorepo or dual-directory configuration.
 
 ### Steps:
 1. Push this repository to GitHub or GitLab.
 2. In the [Vercel Dashboard](https://vercel.com/new), import the repository.
+   - **Framework Preset**: Vite (auto-detected)
+   - **Root Directory**: `./` (leave default)
+   - **Build Command**: `npm run build` (leave default)
+   - **Output Directory**: `dist` (leave default)
 3. In **Settings → Environment Variables**, add:
    - `DATABASE_URL`: Your PostgreSQL connection string (from Vercel Postgres, Neon, or Supabase).
      ```
@@ -127,7 +128,7 @@ This repository is 100% pre-configured for Vercel via `vercel.json` and `api/ind
      ```
    - `JWT_SECRET`: A secure random secret string (e.g. `your_production_jwt_secret_key_2026`).
 4. Click **Deploy**.
-   Vercel will build the React SPA (`client/dist`) and deploy the REST API as serverless functions (`/api/*`).
+   Vercel will build the React SPA (`dist/`) and deploy the REST API as serverless functions (`/api/*`).
 5. On the first cold start, tables and initial demo stations are automatically created in your PostgreSQL database!
 
 ---

@@ -260,7 +260,11 @@ export async function getDb() {
   }
 
   // Fallback to local storage
-  const storagePath = path.join(process.cwd(), 'data', 'radioapp_db.json');
+  const storagePath = process.env.VERCEL
+    ? path.join('/tmp', 'radioapp_db.json')
+    : (fs.existsSync(path.join(process.cwd(), 'server', 'data'))
+        ? path.join(process.cwd(), 'server', 'data', 'radioapp_db.json')
+        : path.join(process.cwd(), 'data', 'radioapp_db.json'));
   console.log('[DB] Using local database store at:', storagePath);
   dbInstance = new LocalStorageAdapter(storagePath);
   return dbInstance;

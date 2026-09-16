@@ -3,7 +3,9 @@ import path from 'path';
 import fs from 'fs';
 
 // Ensure uploads folder exists in local environment
-const uploadDir = path.join(process.cwd(), 'uploads');
+const uploadDir = process.env.VERCEL
+  ? path.join('/tmp', 'uploads')
+  : path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) {
   try {
     fs.mkdirSync(uploadDir, { recursive: true });
