@@ -17,6 +17,7 @@ export function AdminLoginPage() {
   const [otpStep, setOtpStep] = useState(false);
   const [otpEmail, setOtpEmail] = useState('');
   const [otpCode, setOtpCode] = useState('');
+  const [devCode, setDevCode] = useState(null);
   const [resending, setResending] = useState(false);
 
   const handleSubmitCredentials = async (e) => {
@@ -29,6 +30,9 @@ export function AdminLoginPage() {
       if (res?.require_otp) {
         setOtpEmail(res.email || username);
         setOtpStep(true);
+        if (res.dev_code) {
+          setDevCode(res.dev_code);
+        }
         setInfoMessage(res.message || `We sent a 4-digit security code to ${res.email}. Enter it to complete login.`);
       } else {
         navigate('/admin');
@@ -62,8 +66,11 @@ export function AdminLoginPage() {
     setResending(true);
     setError(null);
     try {
-      await resendOtp(otpEmail, 'login');
-      setInfoMessage('A new 4-digit code has been dispatched to your email.');
+      const res = await resendOtp(otpEmail, 'login');
+      if (res?.dev_code) {
+        setDevCode(res.dev_code);
+      }
+      setInfoMessage(res?.message || 'A new 4-digit code has been dispatched to your email.');
     } catch (err) {
       setError(err.message || 'Failed to resend code. Please try again.');
     } finally {
@@ -161,6 +168,32 @@ export function AdminLoginPage() {
                 </p>
               </div>
 
+              {devCode && (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs space-y-1.5 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold uppercase tracking-wider text-[10px] text-amber-400 flex items-center gap-1.5">
+                      <KeyRound className="w-3.5 h-3.5" /> Dev Security Code
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setOtpCode(devCode)}
+                      className="text-[11px] underline text-amber-200 hover:text-white font-bold"
+                    >
+                      Auto-fill
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-300 text-xs">Your 4-digit code is:</span>
+                    <span className="font-mono text-base font-black tracking-widest text-white px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40">
+                      {devCode}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    Mock console mode active. Enter this code to authenticate.
+                  </p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-center text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
                   4-Digit Security Code
@@ -176,7 +209,7 @@ export function AdminLoginPage() {
                   className="w-full text-center text-3xl tracking-[1em] font-mono font-black py-3 rounded-2xl bg-slate-800 border-2 border-indigo-500/40 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 text-white focus:outline-none"
                 />
                 <p className="text-[11px] text-slate-400 text-center mt-2">
-                  Code expires in 10 minutes
+                  Code expires in 15 minutes
                 </p>
               </div>
 

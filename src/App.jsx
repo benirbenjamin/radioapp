@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { StationProvider } from './context/StationContext';
+import { DomainProvider, useDomain } from './context/DomainContext';
 
 // Public Pages
 import { StationDirectoryPage } from './pages/public/StationDirectoryPage';
@@ -59,10 +60,65 @@ function ProtectedRoute({ children, superAdminOnly = false }) {
   return children;
 }
 
-export function App() {
+function AppRoutes() {
+  const { isCustomDomain, domainStationBundle, loadingDomain } = useDomain();
+
+  if (loadingDomain) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 text-white font-sans gap-3">
+        <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-xs text-slate-400 font-medium">Resolving broadcast network...</p>
+      </div>
+    );
+  }
+
+  // If visitor is accessing via a custom domain (e.g. kigaliwave.com or ?domain=kigaliwave.com)
+  if (isCustomDomain && domainStationBundle) {
+    return (
+      <StationProvider initialBundle={domainStationBundle} isCustomDomain={true}>
+        <Routes>
+          {/* Custom domain serves station directly at root / */}
+          <Route path="/" element={<StationHomePage />} />
+          <Route path="/schedule" element={<StationSchedulePage />} />
+          <Route path="/news" element={<StationNewsPage />} />
+          <Route path="/news/:articleSlug" element={<StationNewsDetailPage />} />
+          <Route path="/videos" element={<StationVideosPage />} />
+          <Route path="/contact" element={<StationContactPage />} />
+
+          {/* Admin access on custom domain */}
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<AdminDashboardPage />} />
+            <Route path="appearance" element={<AppearancePage />} />
+            <Route path="streams" element={<StreamsPage />} />
+            <Route path="programs" element={<ProgramsPage />} />
+            <Route path="news" element={<NewsManagerPage />} />
+            <Route path="news/new" element={<NewsEditPage />} />
+            <Route path="news/edit/:articleId" element={<NewsEditPage />} />
+            <Route path="videos" element={<VideosManagerPage />} />
+            <Route path="sections" element={<SectionsManagerPage />} />
+            <Route path="settings" element={<StationSettingsPage />} />
+            <Route path="analytics" element={<AnalyticsPage />} />
+            <Route path="profile" element={<ProfilePage />} />
+          </Route>
+
+          {/* Fallback to custom domain root */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </StationProvider>
+    );
+  }
+
+  // Standard platform directory routes
   return (
-    <AuthProvider>
-      <Routes>
+    <Routes>
         
         {/* PUBLIC ROUTES */}
         <Route path="/" element={<StationDirectoryPage />} />
@@ -190,7 +246,17 @@ export function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
 
       </Routes>
-    </AuthProvider>
   );
 }
+
+export function App() {
+  return (
+    <DomainProvider>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </DomainProvider>
+  );
+}
+
 export default App;

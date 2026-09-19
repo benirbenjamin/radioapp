@@ -1,53 +1,50 @@
+import 'dotenv/config';
 import nodemailer from 'nodemailer';
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const RESEND_FROM = process.env.RESEND_FROM || 'Radio Platform <onboarding@resend.dev>';
+export function isEmailConfigured() {
+  return Boolean(
+    process.env.RESEND_API_KEY ||
+    (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)
+  );
+}
 
-const SMTP_HOST = process.env.SMTP_HOST;
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587');
-const SMTP_USER = process.env.SMTP_USER;
-const SMTP_PASS = process.env.SMTP_PASS;
-const SMTP_FROM = process.env.SMTP_FROM || 'Radio Platform <noreply@radioplatform.io>';
-const SMTP_SECURE = process.env.SMTP_SECURE === 'true' || SMTP_PORT === 465;
+export function getTransporter() {
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const port = parseInt(process.env.SMTP_PORT || '587');
+  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
 
-let nodemailerTransporter = null;
-
-if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
-  try {
-    nodemailerTransporter = nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: SMTP_PORT,
-      secure: SMTP_SECURE,
-      auth: {
-        user: SMTP_USER,
-        pass: SMTP_PASS,
-      },
+  if (host && user && pass) {
+    return nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass }
     });
-    console.log('[Email] Nodemailer SMTP transport initialized with host:', SMTP_HOST);
-  } catch (err) {
-    console.warn('[Email] Could not initialize Nodemailer transport:', err.message);
   }
-} else if (RESEND_API_KEY) {
-  console.log('[Email] Resend API initialized.');
-} else {
-  console.log('[Email] No SMTP or Resend credentials provided. Running in Development Console Mock mode.');
+  return null;
 }
 
 /**
  * Send an email via Resend, Nodemailer, or Dev Console Mock
  */
 export async function sendEmail({ to, subject, html, text }) {
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const resendFrom = process.env.RESEND_FROM || 'Radio Platform <onboarding@resend.dev>';
+  const smtpFrom = process.env.SMTP_FROM || 'Radio Platform <noreply@radioplatform.io>';
+  const transporter = getTransporter();
   // 1. Priority 1: Resend API
-  if (RESEND_API_KEY) {
+  if (resendApiKey) {
     try {
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${RESEND_API_KEY}`,
+          'Authorization': `Bearer ${resendApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: RESEND_FROM,
+          from: resendFrom,
           to: Array.isArray(to) ? to : [to],
           subject,
           html,
@@ -69,10 +66,10 @@ export async function sendEmail({ to, subject, html, text }) {
   }
 
   // 2. Priority 2: Nodemailer SMTP
-  if (nodemailerTransporter) {
+  if (transporter) {
     try {
-      const info = await nodemailerTransporter.sendMail({
-        from: SMTP_FROM,
+      const info = await transporter.sendMail({
+        from: smtpFrom,
         to,
         subject,
         html,

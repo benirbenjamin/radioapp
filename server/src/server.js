@@ -1,9 +1,9 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
 
 import { initDatabase } from './config/initDb.js';
 import authRoutes from './routes/auth.routes.js';
@@ -19,8 +19,6 @@ import analyticsRoutes from './routes/analytics.routes.js';
 import superadminRoutes from './routes/superadmin.routes.js';
 import radioRequestsRoutes from './routes/radioRequests.routes.js';
 import notificationsRoutes from './routes/notifications.routes.js';
-
-dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

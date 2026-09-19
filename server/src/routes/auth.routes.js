@@ -2,9 +2,14 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import { query } from '../config/db.js';
 import { generateToken, authenticateToken } from '../middleware/auth.js';
-import { sendOtpCodeEmail } from '../utils/emailHelper.js';
+import { sendOtpCodeEmail, isEmailConfigured } from '../utils/emailHelper.js';
 
 const router = express.Router();
+
+// Helper to determine if dev mock code should be exposed in API responses
+function shouldExposeDevCode() {
+  return process.env.NODE_ENV !== 'production' || !isEmailConfigured();
+}
 
 // Helper to generate 4-digit code
 function generate4DigitCode() {
@@ -27,8 +32,33 @@ router.post('/register', async (req, res) => {
     const trimmedEmail = email.trim().toLowerCase();
 
     // Check if email already registered
-    const existing = await query(`SELECT id FROM users WHERE LOWER(email) = LOWER($1)`, [trimmedEmail]);
+    const existing = await query(`SELECT id, full_name, email_verified FROM users WHERE LOWER(email) = LOWER($1)`, [trimmedEmail]);
     if (existing.rows.length > 0) {
+      const existingUser = existing.rows[0];
+      // If user registered earlier but hasn't completed verification, permit re-verification
+      if (!existingUser.email_verified) {
+        const code = generate4DigitCode();
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+        const nowIso = new Date().toISOString();
+
+        await query(`
+          INSERT INTO verification_codes (id, email, code, type, expires_at, used, created_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `, [`otp-${Date.now()}`, trimmedEmail, code, 'signup', expiresAt, false, nowIso]);
+
+        await sendOtpCodeEmail({ to: trimmedEmail, code, type: 'signup', name: existingUser.full_name || full_name.trim() });
+
+        return res.status(200).json({
+          message: isEmailConfigured()
+            ? 'Account pending verification. A fresh 4-digit code has been sent to your email.'
+            : 'Account pending verification. Enter the 4-digit code to complete activation.',
+          email: trimmedEmail,
+          require_otp: true,
+          requires_verification: true,
+          dev_code: shouldExposeDevCode() ? code : undefined
+        });
+      }
+
       return res.status(400).json({ error: 'An account with this email already exists. Please sign in.' });
     }
 
@@ -51,27 +81,30 @@ router.post('/register', async (req, res) => {
     // Insert user with role 'user' and email_verified = false
     await query(`
       INSERT INTO users (id, username, email, password_hash, role, full_name, phone, email_verified)
-      VALUES ($1, $2, $3, $4, 'user', $5, $6, false)
-    `, [userId, targetUsername, trimmedEmail, passwordHash, full_name.trim(), phone ? phone.trim() : null]);
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `, [userId, targetUsername, trimmedEmail, passwordHash, 'user', full_name.trim(), phone ? phone.trim() : null, false]);
 
     // Generate 4-digit code
     const code = generate4DigitCode();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 mins
-
     const nowIso = new Date().toISOString();
+
     await query(`
       INSERT INTO verification_codes (id, email, code, type, expires_at, used, created_at)
-      VALUES ($1, $2, $3, 'signup', $4, false, $5)
-    `, [`otp-${Date.now()}`, trimmedEmail, code, expiresAt, nowIso]);
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [`otp-${Date.now()}`, trimmedEmail, code, 'signup', expiresAt, false, nowIso]);
 
     // Send email
     await sendOtpCodeEmail({ to: trimmedEmail, code, type: 'signup', name: full_name });
 
     res.status(201).json({
-      message: 'Account created! Please enter the 4-digit code sent to your email to verify.',
+      message: isEmailConfigured()
+        ? 'Account created! Please enter the 4-digit code sent to your email to verify.'
+        : 'Account created! Please enter the 4-digit verification code below.',
       email: trimmedEmail,
       require_otp: true,
-      requires_verification: true
+      requires_verification: true,
+      dev_code: shouldExposeDevCode() ? code : undefined
     });
   } catch (err) {
     console.error('[Auth] Registration error:', err);
@@ -111,8 +144,8 @@ router.post('/login', async (req, res) => {
     const nowIso = new Date().toISOString();
     await query(`
       INSERT INTO verification_codes (id, email, code, type, expires_at, used, created_at)
-      VALUES ($1, $2, $3, 'login', $4, false, $5)
-    `, [`otp-${Date.now()}`, user.email.toLowerCase(), code, expiresAt, nowIso]);
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [`otp-${Date.now()}`, user.email.toLowerCase(), code, 'login', expiresAt, false, nowIso]);
 
     // Send email
     await sendOtpCodeEmail({
@@ -125,7 +158,10 @@ router.post('/login', async (req, res) => {
     res.json({
       require_otp: true,
       email: user.email,
-      message: `A 4-digit security code has been sent to ${user.email}.`
+      message: isEmailConfigured()
+        ? `A 4-digit security code has been sent to ${user.email}.`
+        : `A 4-digit security code has been dispatched. Enter the code to continue.`,
+      dev_code: shouldExposeDevCode() ? code : undefined
     });
   } catch (err) {
     console.error('[Auth] Login error:', err);
@@ -247,8 +283,8 @@ router.post('/resend-code', async (req, res) => {
     const nowIso = new Date().toISOString();
     await query(`
       INSERT INTO verification_codes (id, email, code, type, expires_at, used, created_at)
-      VALUES ($1, $2, $3, $4, $5, false, $6)
-    `, [`otp-${Date.now()}`, trimmedEmail, code, type || 'login', expiresAt, nowIso]);
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [`otp-${Date.now()}`, trimmedEmail, code, type || 'login', expiresAt, false, nowIso]);
 
     await sendOtpCodeEmail({
       to: trimmedEmail,
@@ -257,7 +293,12 @@ router.post('/resend-code', async (req, res) => {
       name: user.full_name || user.username
     });
 
-    res.json({ message: 'A fresh 4-digit verification code has been sent to your email.' });
+    res.json({
+      message: isEmailConfigured()
+        ? 'A fresh 4-digit verification code has been sent to your email.'
+        : 'A fresh 4-digit verification code has been generated.',
+      dev_code: shouldExposeDevCode() ? code : undefined
+    });
   } catch (err) {
     console.error('[Auth] Resend code error:', err);
     res.status(500).json({ error: 'Failed to resend verification code.' });

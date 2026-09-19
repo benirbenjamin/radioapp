@@ -4,15 +4,15 @@ import { Radio, Menu, X, Play, Pause, Layers } from 'lucide-react';
 import { useStation } from '../../context/StationContext';
 
 export function PublicNavbar() {
-  const { station, branding, isPlaying, togglePlay } = useStation();
+  const { station, branding, isPlaying, togglePlay, basePath: contextBasePath, isCustomDomain } = useStation();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const slug = station?.slug || '';
-  const basePath = `/station/${slug}`;
+  const basePath = contextBasePath !== undefined ? contextBasePath : `/station/${slug}`;
 
   const navLinks = [
-    { label: 'Home', path: basePath },
+    { label: 'Home', path: basePath || '/' },
     { label: 'Schedule', path: `${basePath}/schedule` },
     { label: 'News', path: `${basePath}/news` },
     { label: 'Videos', path: `${basePath}/videos` },
@@ -20,8 +20,8 @@ export function PublicNavbar() {
   ];
 
   const isActive = (path) => {
-    if (path === basePath && location.pathname === basePath) return true;
-    if (path !== basePath && location.pathname.startsWith(path)) return true;
+    if ((path === basePath || path === '/') && (location.pathname === basePath || location.pathname === '/')) return true;
+    if (path !== basePath && path !== '/' && location.pathname.startsWith(path)) return true;
     return false;
   };
 
@@ -37,7 +37,7 @@ export function PublicNavbar() {
         <div className="flex items-center justify-between h-20">
           
           {/* Brand Logo & Name */}
-          <Link to={basePath} className="flex items-center gap-3.5 group">
+          <Link to={basePath || '/'} className="flex items-center gap-3.5 group">
             {branding?.logo_url ? (
               <img
                 src={branding.logo_url}
@@ -88,14 +88,24 @@ export function PublicNavbar() {
 
           {/* Right Action: Listen Live Button & Stations Portal */}
           <div className="hidden md:flex items-center gap-3">
-            <Link
-              to="/"
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              title="Browse all radio stations"
-            >
-              <Layers className="w-4 h-4 text-slate-400" />
-              <span>All Stations</span>
-            </Link>
+            {!isCustomDomain ? (
+              <Link
+                to="/"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                title="Browse all radio stations"
+              >
+                <Layers className="w-4 h-4 text-slate-400" />
+                <span>All Stations</span>
+              </Link>
+            ) : (
+              <Link
+                to="/admin/login"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+                title="Station Administrator Sign In"
+              >
+                <span>Station Login</span>
+              </Link>
+            )}
 
             <button
               onClick={togglePlay}

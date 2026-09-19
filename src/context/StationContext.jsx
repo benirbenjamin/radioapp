@@ -4,18 +4,23 @@ import { api } from '../api/client';
 
 const StationContext = createContext(null);
 
-export function StationProvider({ children, initialSlug }) {
+export function StationProvider({ children, initialSlug, initialBundle = null, isCustomDomain = false }) {
   const params = useParams();
   const navigate = useNavigate();
   const slug = initialSlug || params.slug;
 
-  const [stationBundle, setStationBundle] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [stationBundle, setStationBundle] = useState(initialBundle);
+  const [loading, setLoading] = useState(!initialBundle);
   const [error, setError] = useState(null);
 
   // Audio player state
   const audioRef = useRef(null);
-  const [activeStream, setActiveStream] = useState(null);
+  const [activeStream, setActiveStream] = useState(() => {
+    if (initialBundle?.streams?.length > 0) {
+      return initialBundle.streams.find(s => s.is_default) || initialBundle.streams[0];
+    }
+    return null;
+  });
   const [isPlaying, setIsPlaying] = useState(false);
   const [playerStatus, setPlayerStatus] = useState('idle'); // 'idle' | 'connecting' | 'live' | 'error'
   const [volume, setVolume] = useState(0.85);
@@ -23,6 +28,16 @@ export function StationProvider({ children, initialSlug }) {
 
   // Fetch station bundle
   const loadStation = async (targetSlug) => {
+    // If bundle is already provided via custom domain and no explicit slug requested, use it
+    if (initialBundle && !targetSlug) {
+      setStationBundle(initialBundle);
+      if (initialBundle.streams?.length > 0) {
+        setActiveStream(initialBundle.streams.find(s => s.is_default) || initialBundle.streams[0]);
+      }
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -56,8 +71,10 @@ export function StationProvider({ children, initialSlug }) {
   };
 
   useEffect(() => {
-    loadStation(slug);
-  }, [slug]);
+    if (!initialBundle || slug) {
+      loadStation(slug);
+    }
+  }, [slug, initialBundle]);
 
   // Audio element management
   useEffect(() => {
@@ -166,6 +183,10 @@ export function StationProvider({ children, initialSlug }) {
       .catch(() => setPlayerStatus('error'));
   };
 
+  const basePath = isCustomDomain
+    ? ''
+    : (stationBundle?.station?.slug ? `/station/${stationBundle.station.slug}` : (slug ? `/station/${slug}` : ''));
+
   return (
     <StationContext.Provider
       value={{
@@ -192,6 +213,8 @@ export function StationProvider({ children, initialSlug }) {
         retryPlayback,
         loading,
         error,
+        basePath,
+        isCustomDomain,
         refreshStation: () => loadStation(slug)
       }}
     >

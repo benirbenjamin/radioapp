@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Settings, Save, CheckCircle2, Globe, Phone, Mail, MapPin, Share2, Search } from 'lucide-react';
+import { Settings, Save, CheckCircle2, Globe, Phone, Mail, MapPin, Share2, Search, Link2, ShieldCheck, RefreshCw, ExternalLink, Copy, Check, AlertTriangle, Trash2, CheckCircle, Info } from 'lucide-react';
 import { api } from '../../api/client';
 
 export function StationSettingsPage() {
@@ -10,6 +10,16 @@ export function StationSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
+
+  // Custom Domain state
+  const [domainConfig, setDomainConfig] = useState(null);
+  const [domainInput, setDomainInput] = useState('');
+  const [domainConnecting, setDomainConnecting] = useState(false);
+  const [domainVerifying, setDomainVerifying] = useState(false);
+  const [domainDisconnecting, setDomainDisconnecting] = useState(false);
+  const [domainMessage, setDomainMessage] = useState(null);
+  const [domainError, setDomainError] = useState(null);
+  const [copiedTarget, setCopiedTarget] = useState(false);
 
   const [formData, setFormData] = useState({
     station_name: '',
@@ -67,8 +77,87 @@ export function StationSettingsPage() {
       }
     }
 
+    async function loadDomain() {
+      if (!stationId) return;
+      try {
+        const data = await api.get(`/stations/${stationId}/domain`);
+        setDomainConfig(data);
+        setDomainInput(data.custom_domain || '');
+      } catch (err) {
+        console.warn('Failed to load custom domain config:', err);
+      }
+    }
+
     loadSettings();
+    loadDomain();
   }, [stationId]);
+
+  const fetchDomainConfig = async () => {
+    if (!stationId) return;
+    try {
+      const data = await api.get(`/stations/${stationId}/domain`);
+      setDomainConfig(data);
+      setDomainInput(data.custom_domain || '');
+    } catch (err) {
+      console.warn('Failed to load custom domain config:', err);
+    }
+  };
+
+  const handleConnectDomain = async (e) => {
+    e.preventDefault();
+    setDomainConnecting(true);
+    setDomainError(null);
+    setDomainMessage(null);
+    try {
+      const res = await api.put(`/stations/${stationId}/domain`, { domain: domainInput });
+      setDomainMessage(res.message);
+      await fetchDomainConfig();
+    } catch (err) {
+      setDomainError(err.message || 'Failed to connect domain.');
+    } finally {
+      setDomainConnecting(false);
+    }
+  };
+
+  const handleVerifyDomain = async () => {
+    setDomainVerifying(true);
+    setDomainError(null);
+    setDomainMessage(null);
+    try {
+      const res = await api.post(`/stations/${stationId}/domain/verify`, {});
+      setDomainMessage(res.message);
+      await fetchDomainConfig();
+    } catch (err) {
+      setDomainError(err.message || 'DNS verification failed. Please check your DNS record.');
+    } finally {
+      setDomainVerifying(false);
+    }
+  };
+
+  const handleDisconnectDomain = async () => {
+    if (!window.confirm('Disconnect this custom domain? Listeners will only be able to reach your station through the standard platform directory and slug URL.')) {
+      return;
+    }
+    setDomainDisconnecting(true);
+    setDomainError(null);
+    setDomainMessage(null);
+    try {
+      const res = await api.delete(`/stations/${stationId}/domain`);
+      setDomainMessage(res.message);
+      setDomainInput('');
+      await fetchDomainConfig();
+    } catch (err) {
+      setDomainError(err.message || 'Failed to disconnect domain.');
+    } finally {
+      setDomainDisconnecting(false);
+    }
+  };
+
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text);
+    setCopiedTarget(true);
+    setTimeout(() => setCopiedTarget(false), 2000);
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -117,6 +206,204 @@ export function StationSettingsPage() {
           <span>{message}</span>
         </div>
       )}
+
+      {/* CUSTOM DOMAIN & DNS CONFIGURATION CARD */}
+      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div>
+            <h2 className="font-extrabold text-base text-slate-900 flex items-center gap-2.5">
+              <Link2 className="w-5 h-5 text-indigo-600" />
+              <span>Custom Domain & DNS Setup</span>
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Connect your independent domain so listeners access your station directly at your own URL without platform prefixes.
+            </p>
+          </div>
+
+          {/* Connection Status Badge */}
+          <div>
+            {domainConfig?.custom_domain ? (
+              domainConfig.custom_domain_verified ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Domain Connected & Active</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                  <RefreshCw className="w-3.5 h-3.5 text-amber-600 animate-spin" />
+                  <span>Pending DNS Verification</span>
+                </span>
+              )
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                <Info className="w-3.5 h-3.5 text-slate-400" />
+                <span>No Custom Domain</span>
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Feedback Messages */}
+        {domainMessage && (
+          <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium flex items-center gap-2 animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+            <span>{domainMessage}</span>
+          </div>
+        )}
+
+        {domainError && (
+          <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium flex items-center gap-2 animate-in fade-in">
+            <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+            <span>{domainError}</span>
+          </div>
+        )}
+
+        {/* Domain Form */}
+        <form onSubmit={handleConnectDomain} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                Domain Name
+              </label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-2.5 text-xs text-slate-400 font-mono select-none">
+                  https://
+                </span>
+                <input
+                  type="text"
+                  required
+                  value={domainInput}
+                  onChange={(e) => setDomainInput(e.target.value.toLowerCase().replace(/^https?:\/\//i, '').trim())}
+                  placeholder="e.g. kigaliwave.com or radio.mybrand.org"
+                  className="w-full pl-20 pr-4 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="submit"
+                disabled={domainConnecting || !domainInput.trim()}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-sm transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                <Link2 className="w-4 h-4" />
+                <span>{domainConnecting ? 'Connecting...' : (domainConfig?.custom_domain ? 'Update Domain' : 'Connect Domain')}</span>
+              </button>
+
+              {domainConfig?.custom_domain && (
+                <button
+                  type="button"
+                  onClick={handleDisconnectDomain}
+                  disabled={domainDisconnecting}
+                  className="p-2.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold transition-colors disabled:opacity-50"
+                  title="Disconnect Custom Domain"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        </form>
+
+        {/* DNS Configuration Instructions (Displayed when domain is set) */}
+        {domainConfig?.custom_domain && (
+          <div className="mt-4 p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-slate-900 text-xs flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                  <span>Required DNS Records for {domainConfig.custom_domain}</span>
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Log in to your domain registrar (GoDaddy, Namecheap, Cloudflare, etc.) and add this CNAME record:
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleVerifyDomain}
+                  disabled={domainVerifying}
+                  className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${domainVerifying ? 'animate-spin' : ''}`} />
+                  <span>{domainVerifying ? 'Checking...' : 'Verify DNS'}</span>
+                </button>
+
+                <a
+                  href={`/?domain=${encodeURIComponent(domainConfig.custom_domain)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                  title="Test how your radio appears on this domain"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Test Preview</span>
+                </a>
+              </div>
+            </div>
+
+            {/* DNS Records Table */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="p-3.5 rounded-xl bg-white border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-bold text-[10px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                    CNAME Record (Recommended)
+                  </span>
+                  <span className="text-[10px] text-slate-400">Subdomains & root</span>
+                </div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between text-slate-500">
+                    <span>Host / Name:</span>
+                    <span className="font-mono text-slate-900 font-semibold">{domainConfig.dns_instructions?.cname_record?.name || '@'}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-500">
+                    <span>Target / Points To:</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-slate-900 font-bold text-[11px]">
+                        {domainConfig.dns_instructions?.cname_record?.target || 'cname.radioplatform.io'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(domainConfig.dns_instructions?.cname_record?.target || 'cname.radioplatform.io')}
+                        className="text-slate-400 hover:text-indigo-600 transition-colors"
+                        title="Copy Target"
+                      >
+                        {copiedTarget ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-white border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-bold text-[10px] text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+                    A Record (Apex alternative)
+                  </span>
+                  <span className="text-[10px] text-slate-400">Root domain @</span>
+                </div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between text-slate-500">
+                    <span>Host / Name:</span>
+                    <span className="font-mono text-slate-900 font-semibold">@</span>
+                  </div>
+                  <div className="flex justify-between text-slate-500">
+                    <span>Value:</span>
+                    <span className="font-mono text-slate-900 font-bold text-[11px]">
+                      {domainConfig.dns_instructions?.a_record?.target || '76.76.21.21'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              DNS propagation can take from 2 to 30 minutes depending on your registrar. Once DNS propagates, click <strong>Verify DNS</strong> to finalize your custom domain.
+            </p>
+          </div>
+        )}
+      </div>
 
       <form onSubmit={handleSave} className="space-y-8 text-xs">
         

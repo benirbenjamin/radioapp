@@ -4,10 +4,10 @@ import { Radio, Phone, Mail, MapPin, Facebook, Instagram, Twitter, Youtube, Send
 import { useStation } from '../../context/StationContext';
 
 export function PublicFooter() {
-  const { station, branding, settings } = useStation();
+  const { station, branding, settings, basePath: contextBasePath } = useStation();
 
   const slug = station?.slug || '';
-  const basePath = `/station/${slug}`;
+  const basePath = contextBasePath !== undefined ? contextBasePath : `/station/${slug}`;
 
   return (
     <footer
@@ -112,7 +112,7 @@ export function PublicFooter() {
             <h4 className="text-xs font-bold uppercase tracking-wider text-white">Quick Links</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link to={basePath} className="hover:text-white transition-colors">
+                <Link to={basePath || '/'} className="hover:text-white transition-colors">
                   Home
                 </Link>
               </li>

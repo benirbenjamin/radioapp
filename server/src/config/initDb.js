@@ -84,10 +84,21 @@ export async function initDatabase() {
       description TEXT,
       status VARCHAR(32) DEFAULT 'active',
       is_default BOOLEAN DEFAULT FALSE,
+      custom_domain VARCHAR(256) UNIQUE,
+      custom_domain_verified BOOLEAN DEFAULT FALSE,
+      custom_domain_updated_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  try {
+    await query(`ALTER TABLE radio_stations ADD COLUMN IF NOT EXISTS custom_domain VARCHAR(256);`);
+    await query(`ALTER TABLE radio_stations ADD COLUMN IF NOT EXISTS custom_domain_verified BOOLEAN DEFAULT FALSE;`);
+    await query(`ALTER TABLE radio_stations ADD COLUMN IF NOT EXISTS custom_domain_updated_at TIMESTAMPTZ;`);
+  } catch (e) {
+    // Handled
+  }
 
   // Create Station Admins
   await query(`
