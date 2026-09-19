@@ -13,15 +13,66 @@ export async function initDatabase() {
       password_hash TEXT NOT NULL,
       role VARCHAR(32) NOT NULL,
       full_name VARCHAR(128),
+      phone VARCHAR(64),
+      email_verified BOOLEAN DEFAULT FALSE,
       created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
   try {
     await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR(128);`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(64);`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;`);
   } catch (e) {
-    // Column might already exist or DDL handled by storage adapter
+    // Handled
   }
+
+  // Create Verification Codes Table (4-digit OTP)
+  await query(`
+    CREATE TABLE IF NOT EXISTS verification_codes (
+      id VARCHAR(64) PRIMARY KEY,
+      email VARCHAR(128) NOT NULL,
+      code VARCHAR(8) NOT NULL,
+      type VARCHAR(32) NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Create Radio Requests Table
+  await query(`
+    CREATE TABLE IF NOT EXISTS radio_requests (
+      id VARCHAR(64) PRIMARY KEY,
+      user_id VARCHAR(64) NOT NULL,
+      email VARCHAR(128) NOT NULL,
+      full_name VARCHAR(128) NOT NULL,
+      phone VARCHAR(64) NOT NULL,
+      radio_name VARCHAR(128) NOT NULL,
+      slogan VARCHAR(256),
+      logo_url TEXT,
+      description TEXT,
+      stream_url TEXT,
+      status VARCHAR(32) DEFAULT 'pending',
+      admin_notes TEXT,
+      created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Create In-App Notifications Table
+  await query(`
+    CREATE TABLE IF NOT EXISTS in_app_notifications (
+      id VARCHAR(64) PRIMARY KEY,
+      user_id VARCHAR(64),
+      title VARCHAR(256) NOT NULL,
+      message TEXT NOT NULL,
+      type VARCHAR(64) DEFAULT 'request',
+      link TEXT,
+      is_read BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
 
   // Create Radio Stations
   await query(`
@@ -207,6 +258,54 @@ export async function initDatabase() {
       station_id VARCHAR(64),
       action VARCHAR(128) NOT NULL,
       details TEXT,
+      created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Create Verification Codes (for 4-digit OTP 2FA & email activation)
+  await query(`
+    CREATE TABLE IF NOT EXISTS verification_codes (
+      id VARCHAR(64) PRIMARY KEY,
+      email VARCHAR(128) NOT NULL,
+      code VARCHAR(16) NOT NULL,
+      type VARCHAR(32) DEFAULT 'login',
+      expires_at TIMESTAMPTZ NOT NULL,
+      used BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Create Radio Requests (listing applications)
+  await query(`
+    CREATE TABLE IF NOT EXISTS radio_requests (
+      id VARCHAR(64) PRIMARY KEY,
+      user_id VARCHAR(64) NOT NULL,
+      email VARCHAR(128) NOT NULL,
+      names VARCHAR(128),
+      phonenumber VARCHAR(64),
+      radio_name VARCHAR(128) NOT NULL,
+      slogan VARCHAR(256),
+      radio_logo_link TEXT,
+      description TEXT,
+      stream_url TEXT,
+      status VARCHAR(32) DEFAULT 'pending',
+      station_id VARCHAR(64),
+      admin_notes TEXT,
+      created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Create In-App Notifications
+  await query(`
+    CREATE TABLE IF NOT EXISTS in_app_notifications (
+      id VARCHAR(64) PRIMARY KEY,
+      user_id VARCHAR(64),
+      title VARCHAR(256) NOT NULL,
+      message TEXT NOT NULL,
+      type VARCHAR(64) DEFAULT 'system',
+      link VARCHAR(256),
+      is_read BOOLEAN DEFAULT FALSE,
       created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
     );
   `);

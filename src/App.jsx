@@ -11,6 +11,8 @@ import { StationNewsPage } from './pages/public/StationNewsPage';
 import { StationNewsDetailPage } from './pages/public/StationNewsDetailPage';
 import { StationVideosPage } from './pages/public/StationVideosPage';
 import { StationContactPage } from './pages/public/StationContactPage';
+import { UserSignupPage } from './pages/public/UserSignupPage';
+import { RequestStationPage } from './pages/public/RequestStationPage';
 
 // Admin Pages
 import { AdminLoginPage } from './pages/admin/AdminLoginPage';
@@ -32,6 +34,7 @@ import { StationsManagerPage } from './pages/admin/superadmin/StationsManagerPag
 import { AdminsManagerPage } from './pages/admin/superadmin/AdminsManagerPage';
 import { PlatformStatsPage } from './pages/admin/superadmin/PlatformStatsPage';
 import { AuditLogsPage } from './pages/admin/superadmin/AuditLogsPage';
+import { AdminRequestsPage } from './pages/admin/superadmin/AdminRequestsPage';
 
 // Protected Route Component
 function ProtectedRoute({ children, superAdminOnly = false }) {
@@ -63,6 +66,8 @@ export function App() {
         
         {/* PUBLIC ROUTES */}
         <Route path="/" element={<StationDirectoryPage />} />
+        <Route path="/signup" element={<UserSignupPage />} />
+        <Route path="/request-station" element={<RequestStationPage />} />
 
         {/* Public Station Dynamic Routes */}
         <Route
@@ -139,6 +144,14 @@ export function App() {
           <Route path="profile" element={<ProfilePage />} />
 
           {/* Super Admin specific routes */}
+          <Route
+            path="superadmin/requests"
+            element={
+              <ProtectedRoute superAdminOnly>
+                <AdminRequestsPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="superadmin/stations"
             element={

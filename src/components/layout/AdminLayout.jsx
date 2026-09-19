@@ -20,8 +20,10 @@ import {
   Menu,
   X,
   ExternalLink,
+  Inbox,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { NotificationBell } from '../common/NotificationBell';
 
 export function AdminLayout() {
   const { user, isSuperAdmin, isStationAdmin, assignedStations, activeAdminStation, switchActiveStation, logout } = useAuth();
@@ -53,6 +55,7 @@ export function AdminLayout() {
   // Super admin specific menu items
   const superAdminNavItems = [
     { label: 'Platform Overview', path: '/admin/superadmin/stats', icon: BarChart3 },
+    { label: 'Radio Requests', path: '/admin/superadmin/requests', icon: Inbox },
     { label: 'Radio Stations', path: '/admin/superadmin/stations', icon: Building2 },
     { label: 'Administrators', path: '/admin/superadmin/admins', icon: Users },
     { label: 'Audit Logs', path: '/admin/superadmin/audit-logs', icon: ShieldAlert },
@@ -128,6 +131,9 @@ export function AdminLayout() {
 
           {/* Right: Actions & User Info */}
           <div className="flex items-center gap-3">
+            {/* Notification Bell Dropdown */}
+            <NotificationBell />
+
             {/* View Public Station Site */}
             <a
               href={`/station/${publicStationSlug}`}

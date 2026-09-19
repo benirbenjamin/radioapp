@@ -43,17 +43,27 @@ export function StationDirectoryPage() {
             </div>
           </div>
 
-          <Link
-            to="/admin/login"
-            className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors"
-          >
-            Admin Dashboard Login
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/request-station"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20 transition-all transform active:scale-95"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>List Your Radio</span>
+            </Link>
+
+            <Link
+              to="/admin/login"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors"
+            >
+              Admin Login
+            </Link>
+          </div>
         </div>
       </header>
 
       {/* Directory Hero */}
-      <section className="relative px-4 sm:px-6 lg:px-8 py-14 sm:py-20 text-center max-w-4xl mx-auto space-y-5">
+      <section className="relative px-4 sm:px-6 lg:px-8 py-14 sm:py-20 text-center max-w-4xl mx-auto space-y-6">
         <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-bold text-indigo-400 uppercase tracking-widest">
           <Sparkles className="w-3.5 h-3.5" />
           <span>Live Radio Broadcasting Network</span>
@@ -67,8 +77,24 @@ export function StationDirectoryPage() {
           Tune in to premier independent radio stations broadcasting high-definition audio, curated daily shows, journalism, and live events.
         </p>
 
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          <Link
+            to="/request-station"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/25 transition-all transform active:scale-95"
+          >
+            <span>Submit Your Radio Station</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+          <a
+            href="#stations-grid"
+            className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors"
+          >
+            Browse Stations
+          </a>
+        </div>
+
         {/* Search Bar */}
-        <div className="max-w-md mx-auto relative pt-4">
+        <div id="stations-grid" className="max-w-md mx-auto relative pt-4">
           <Search className="w-5 h-5 absolute left-4 top-7 text-slate-400" />
           <input
             type="text"
@@ -153,6 +179,30 @@ export function StationDirectoryPage() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* Broadcaster Join Banner */}
+      <section className="border-t border-slate-800 bg-slate-950 py-16 px-4 sm:px-6 lg:px-8 text-center">
+        <div className="max-w-3xl mx-auto space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center mx-auto border border-indigo-500/30">
+            <Radio className="w-6 h-6" />
+          </div>
+          <h3 className="text-2xl sm:text-3xl font-black text-white">
+            Do You Manage a Radio Station?
+          </h3>
+          <p className="text-sm text-slate-400 leading-relaxed max-w-xl mx-auto">
+            Get your radio listed on our global directory. Enjoy automatic player routing, custom themes, show scheduling, and dedicated news publishing.
+          </p>
+          <div className="pt-2">
+            <Link
+              to="/request-station"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-black text-white bg-indigo-600 hover:bg-indigo-500 shadow-xl shadow-indigo-600/30 transition-all transform active:scale-95"
+            >
+              <span>Apply for Station Listing</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
       </section>
 
     </div>

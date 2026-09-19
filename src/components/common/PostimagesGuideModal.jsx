@@ -1,7 +1,13 @@
 import React from 'react';
 import { ExternalLink, CheckCircle2, Image as ImageIcon, Copy, X } from 'lucide-react';
 
-export function PostimagesGuideModal({ isOpen, onClose }) {
+export function PostimagesGuideModal({
+  isOpen,
+  onClose,
+  title = "How to Host & Add an Image",
+  subject = "image",
+  description = null
+}) {
   if (!isOpen) return null;
 
   return (
@@ -12,7 +18,7 @@ export function PostimagesGuideModal({ isOpen, onClose }) {
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
           <div className="flex items-center gap-2 text-indigo-600">
             <ImageIcon className="w-6 h-6" />
-            <h3 className="text-lg font-extrabold text-slate-900">How to Add an Article Image</h3>
+            <h3 className="text-lg font-extrabold text-slate-900">{title}</h3>
           </div>
           <button
             onClick={onClose}
@@ -25,7 +31,11 @@ export function PostimagesGuideModal({ isOpen, onClose }) {
         {/* Workflow steps */}
         <div className="mt-4 space-y-4 text-sm text-slate-700">
           <p className="text-xs text-slate-500">
-            To keep your station fast and reliable without bloating the database, article images are hosted for free on <strong>Postimages.org</strong>. Follow these 5 easy steps:
+            {description || (
+              <>
+                To keep your station fast and reliable without bloating the database, {subject}s can be hosted for free on <strong>Postimages.org</strong>. Follow these 5 easy steps:
+              </>
+            )}
           </p>
 
           <ol className="space-y-3">

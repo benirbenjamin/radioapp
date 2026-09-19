@@ -2,16 +2,90 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import { query } from '../config/db.js';
 import { generateToken, authenticateToken } from '../middleware/auth.js';
+import { sendOtpCodeEmail } from '../utils/emailHelper.js';
 
 const router = express.Router();
 
-// POST /api/auth/login
+// Helper to generate 4-digit code
+function generate4DigitCode() {
+  return Math.floor(1000 + Math.random() * 9000).toString();
+}
+
+// POST /api/auth/register - Create account and send 4-digit verification code
+router.post('/register', async (req, res) => {
+  try {
+    const { email, password, full_name, phone } = req.body;
+
+    if (!email || !password || !full_name) {
+      return res.status(400).json({ error: 'Email, password, and full name are required.' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+    }
+
+    const trimmedEmail = email.trim().toLowerCase();
+
+    // Check if email already registered
+    const existing = await query(`SELECT id FROM users WHERE LOWER(email) = LOWER($1)`, [trimmedEmail]);
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: 'An account with this email already exists. Please sign in.' });
+    }
+
+    // Generate or use provided unique username
+    let baseUsername = (req.body.username && req.body.username.trim())
+      ? req.body.username.trim().replace(/[^a-zA-Z0-9_]/g, '')
+      : trimmedEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '');
+    if (!baseUsername) baseUsername = 'user';
+    let targetUsername = baseUsername;
+    let counter = 1;
+    while (true) {
+      const uCheck = await query(`SELECT id FROM users WHERE LOWER(username) = LOWER($1)`, [targetUsername]);
+      if (uCheck.rows.length === 0) break;
+      targetUsername = `${baseUsername}${counter++}`;
+    }
+
+    const userId = `user-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Insert user with role 'user' and email_verified = false
+    await query(`
+      INSERT INTO users (id, username, email, password_hash, role, full_name, phone, email_verified)
+      VALUES ($1, $2, $3, $4, 'user', $5, $6, false)
+    `, [userId, targetUsername, trimmedEmail, passwordHash, full_name.trim(), phone ? phone.trim() : null]);
+
+    // Generate 4-digit code
+    const code = generate4DigitCode();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 mins
+
+    const nowIso = new Date().toISOString();
+    await query(`
+      INSERT INTO verification_codes (id, email, code, type, expires_at, used, created_at)
+      VALUES ($1, $2, $3, 'signup', $4, false, $5)
+    `, [`otp-${Date.now()}`, trimmedEmail, code, expiresAt, nowIso]);
+
+    // Send email
+    await sendOtpCodeEmail({ to: trimmedEmail, code, type: 'signup', name: full_name });
+
+    res.status(201).json({
+      message: 'Account created! Please enter the 4-digit code sent to your email to verify.',
+      email: trimmedEmail,
+      require_otp: true,
+      requires_verification: true
+    });
+  } catch (err) {
+    console.error('[Auth] Registration error:', err);
+    res.status(500).json({ error: 'Failed to create account.' });
+  }
+});
+
+// POST /api/auth/login - Step 1: Validate password and dispatch 4-digit OTP code to email
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
 
     if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password are required.' });
+      return res.status(400).json({ error: 'Username/email and password are required.' });
     }
 
     const userResult = await query(
@@ -30,7 +104,81 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid username or password.' });
     }
 
-    // Fetch assigned stations if stationadmin
+    // Generate 4-digit OTP code for login
+    const code = generate4DigitCode();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+    const nowIso = new Date().toISOString();
+    await query(`
+      INSERT INTO verification_codes (id, email, code, type, expires_at, used, created_at)
+      VALUES ($1, $2, $3, 'login', $4, false, $5)
+    `, [`otp-${Date.now()}`, user.email.toLowerCase(), code, expiresAt, nowIso]);
+
+    // Send email
+    await sendOtpCodeEmail({
+      to: user.email,
+      code,
+      type: 'login',
+      name: user.full_name || user.username
+    });
+
+    res.json({
+      require_otp: true,
+      email: user.email,
+      message: `A 4-digit security code has been sent to ${user.email}.`
+    });
+  } catch (err) {
+    console.error('[Auth] Login error:', err);
+    res.status(500).json({ error: 'An unexpected server error occurred during login.' });
+  }
+});
+
+// POST /api/auth/verify-code - Step 2: Validate 4-digit code (for signup or login) and issue session
+router.post('/verify-code', async (req, res) => {
+  try {
+    const { email, code, type } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({ error: 'Email and 4-digit verification code are required.' });
+    }
+
+    const trimmedEmail = email.trim().toLowerCase();
+    const cleanCode = code.trim();
+
+    // Find latest unused code for this email and type
+    const codeRes = await query(`
+      SELECT * FROM verification_codes
+      WHERE LOWER(email) = LOWER($1) AND code = $2 AND used = false
+      ORDER BY created_at DESC
+      LIMIT 1
+    `, [trimmedEmail, cleanCode]);
+
+    if (codeRes.rows.length === 0) {
+      return res.status(400).json({ error: 'Invalid verification code. Please check and try again.' });
+    }
+
+    const otpRecord = codeRes.rows[0];
+
+    // Check expiration
+    if (new Date() > new Date(otpRecord.expires_at)) {
+      return res.status(400).json({ error: 'Verification code has expired. Please request a new code.' });
+    }
+
+    // Mark code as used
+    await query(`UPDATE verification_codes SET used = true WHERE id = $1`, [otpRecord.id]);
+
+    // Fetch user
+    const userRes = await query(`SELECT * FROM users WHERE LOWER(email) = LOWER($1)`, [trimmedEmail]);
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: 'User account not found.' });
+    }
+
+    const user = userRes.rows[0];
+
+    // Mark email as verified
+    await query(`UPDATE users SET email_verified = true WHERE id = $1`, [user.id]);
+
+    // Fetch assigned stations
     let assignedStations = [];
     if (user.role === 'stationadmin') {
       const stationRes = await query(`
@@ -51,7 +199,12 @@ router.post('/login', async (req, res) => {
     await query(`
       INSERT INTO audit_logs (id, user_id, action, details)
       VALUES ($1, $2, $3, $4)
-    `, [`log-${Date.now()}`, user.id, 'USER_LOGIN', JSON.stringify({ ip: req.ip, userAgent: req.headers['user-agent'] })]);
+    `, [
+      `log-${Date.now()}`,
+      user.id,
+      otpRecord.type === 'signup' ? 'USER_SIGNUP_VERIFIED' : 'USER_LOGIN_VERIFIED',
+      JSON.stringify({ ip: req.ip, userAgent: req.headers['user-agent'] })
+    ]);
 
     res.json({
       token,
@@ -60,13 +213,54 @@ router.post('/login', async (req, res) => {
         username: user.username,
         email: user.email,
         full_name: user.full_name || '',
+        phone: user.phone || '',
         role: user.role
       },
       assignedStations
     });
   } catch (err) {
-    console.error('[Auth] Login error:', err);
-    res.status(500).json({ error: 'An unexpected server error occurred during login.' });
+    console.error('[Auth] Verify code error:', err);
+    res.status(500).json({ error: 'Failed to verify code.' });
+  }
+});
+
+// POST /api/auth/resend-code - Resend a fresh 4-digit code
+router.post('/resend-code', async (req, res) => {
+  try {
+    const { email, type } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required.' });
+    }
+
+    const trimmedEmail = email.trim().toLowerCase();
+    const userRes = await query(`SELECT * FROM users WHERE LOWER(email) = LOWER($1)`, [trimmedEmail]);
+
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: 'No account found with this email.' });
+    }
+
+    const user = userRes.rows[0];
+    const code = generate4DigitCode();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+    const nowIso = new Date().toISOString();
+    await query(`
+      INSERT INTO verification_codes (id, email, code, type, expires_at, used, created_at)
+      VALUES ($1, $2, $3, $4, $5, false, $6)
+    `, [`otp-${Date.now()}`, trimmedEmail, code, type || 'login', expiresAt, nowIso]);
+
+    await sendOtpCodeEmail({
+      to: trimmedEmail,
+      code,
+      type: type || 'login',
+      name: user.full_name || user.username
+    });
+
+    res.json({ message: 'A fresh 4-digit verification code has been sent to your email.' });
+  } catch (err) {
+    console.error('[Auth] Resend code error:', err);
+    res.status(500).json({ error: 'Failed to resend verification code.' });
   }
 });
 

@@ -17,6 +17,8 @@ import sectionsRoutes from './routes/sections.routes.js';
 import settingsRoutes from './routes/settings.routes.js';
 import analyticsRoutes from './routes/analytics.routes.js';
 import superadminRoutes from './routes/superadmin.routes.js';
+import radioRequestsRoutes from './routes/radioRequests.routes.js';
+import notificationsRoutes from './routes/notifications.routes.js';
 
 dotenv.config();
 
@@ -63,6 +65,8 @@ app.use('/api/stations', sectionsRoutes);
 app.use('/api/stations', settingsRoutes);
 app.use('/api/stations', analyticsRoutes);
 app.use('/api/superadmin', superadminRoutes);
+app.use('/api/requests', radioRequestsRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // In production, serve frontend build if present
 const clientDist = fs.existsSync(path.join(process.cwd(), 'dist'))
@@ -109,4 +113,5 @@ if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
   });
 }
 
+export { app };
 export default app;

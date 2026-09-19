@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import { query } from '../config/db.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
+import { sendRequestApprovedEmail, sendRequestRejectedEmail } from '../utils/emailHelper.js';
 
 const router = express.Router();
 
@@ -312,4 +313,210 @@ router.get('/audit-logs', async (req, res) => {
   }
 });
 
+// GET /api/superadmin/requests - List all radio station listing requests
+router.get('/requests', async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT * FROM radio_requests
+      ORDER BY created_at DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('[SuperAdmin] Error fetching radio requests:', err);
+    res.status(500).json({ error: 'Failed to fetch radio requests.' });
+  }
+});
+
+// PUT /api/superadmin/requests/:id/approve - Approve request, promote user, and provision radio station
+router.put('/requests/:id/approve', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const reqResult = await query(`SELECT * FROM radio_requests WHERE id = $1`, [id]);
+    if (reqResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Radio request not found.' });
+    }
+
+    const request = reqResult.rows[0];
+    if (request.status === 'approved') {
+      return res.status(400).json({ error: 'This radio request has already been approved.' });
+    }
+
+    const stationId = `station-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    let slug = slugify(request.radio_name);
+
+    // Verify slug uniqueness
+    const slugCheck = await query(`SELECT id FROM radio_stations WHERE slug = $1`, [slug]);
+    if (slugCheck.rows.length > 0) {
+      slug = `${slug}-${Math.random().toString(36).substr(2, 4)}`;
+    }
+
+    const now = new Date().toISOString();
+
+    // 1. Create Radio Station
+    await query(`
+      INSERT INTO radio_stations (id, name, slug, slogan, description, status, is_default, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, 'active', false, $6, $7)
+    `, [
+      stationId,
+      request.radio_name,
+      slug,
+      request.slogan || null,
+      request.description || null,
+      now,
+      now
+    ]);
+
+    // 2. Initialize Branding
+    await query(`
+      INSERT INTO station_branding (
+        id, station_id, theme, logo_url, primary_color, secondary_color, accent_color,
+        background_color, surface_color, text_color, muted_color, header_color, footer_color, font_family
+      ) VALUES ($1, $2, 'theme1_modern', $3, '#4F46E5', '#06B6D4', '#F59E0B', '#FFFFFF', '#F8FAFC', '#0F172A', '#64748B', '#FFFFFF', '#0F172A', 'Inter')
+    `, [`brand-${Date.now()}`, stationId, request.logo_url || null]);
+
+    // 3. Initialize Homepage Sections
+    await query(`
+      INSERT INTO homepage_sections (id, station_id, player_enabled, on_air_enabled, programs_enabled, news_enabled, videos_enabled, about_enabled, social_enabled, contact_enabled)
+      VALUES ($1, $2, true, true, true, true, true, true, true, true)
+    `, [`sec-${Date.now()}`, stationId]);
+
+    // 4. Initialize Station Settings
+    await query(`
+      INSERT INTO station_settings (id, station_id, phone, email, copyright_text, seo_title, seo_description)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [
+      `set-${Date.now()}`,
+      stationId,
+      request.phone,
+      request.email,
+      `© ${new Date().getFullYear()} ${request.radio_name}. All Rights Reserved.`,
+      `${request.radio_name} | Live Online Radio`,
+      `Listen to ${request.radio_name} live audio broadcast, explore shows, and read latest stories.`
+    ]);
+
+    // 5. Initialize Stream
+    await query(`
+      INSERT INTO radio_streams (id, station_id, name, stream_url, is_default, status)
+      VALUES ($1, $2, 'Main Live Stream', $3, true, 'active')
+    `, [
+      `stream-${Date.now()}`,
+      stationId,
+      request.stream_url || 'https://stream.zeno.fm/f3wvbbqmdg8uv'
+    ]);
+
+    // 6. Promote User to Station Admin role
+    await query(`UPDATE users SET role = 'stationadmin' WHERE id = $1`, [request.user_id]);
+
+    // 7. Assign User as Administrator for this station
+    await query(`
+      INSERT INTO station_admins (id, user_id, station_id)
+      VALUES ($1, $2, $3)
+    `, [`sa-${Date.now()}`, request.user_id, stationId]);
+
+    // 8. Update Request status to approved
+    await query(`
+      UPDATE radio_requests
+      SET status = 'approved', station_id = $1, updated_at = $2
+      WHERE id = $3
+    `, [stationId, now, id]);
+
+    // 9. Send In-App Notification to User
+    await query(`
+      INSERT INTO in_app_notifications (id, user_id, title, message, type, link, is_read, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `, [
+      `notif-${Date.now()}`,
+      request.user_id,
+      `🎉 Radio Station Approved: ${request.radio_name}`,
+      `Congratulations! Your radio station "${request.radio_name}" has been approved. You are now Station Administrator. Sign in to your dashboard to customize programs and streams.`,
+      'request_approved',
+      '/admin',
+      false,
+      now
+    ]);
+
+    // 10. Audit Log
+    await query(`
+      INSERT INTO audit_logs (id, user_id, station_id, action, details)
+      VALUES ($1, $2, $3, 'APPROVE_RADIO_REQUEST', $4)
+    `, [
+      `log-${Date.now()}`,
+      req.user.id,
+      stationId,
+      JSON.stringify({ requestId: id, radioName: request.radio_name, userId: request.user_id })
+    ]);
+
+    // 11. Send Email Notification to applicant
+    sendRequestApprovedEmail({
+      to: request.email,
+      name: request.names || request.full_name,
+      radioName: request.radio_name,
+      stationSlug: slug
+    }).catch(err => console.warn('[Email] Could not send approval email:', err.message));
+
+    res.json({
+      message: `Radio station "${request.radio_name}" approved successfully! User is now assigned as Station Admin.`,
+      stationId,
+      slug,
+      station: {
+        id: stationId,
+        name: request.radio_name,
+        slug
+      }
+    });
+  } catch (err) {
+    console.error('[SuperAdmin] Error approving request:', err);
+    res.status(500).json({ error: 'Failed to approve radio request.' });
+  }
+});
+
+// PUT /api/superadmin/requests/:id/reject - Reject request with optional feedback notes
+router.put('/requests/:id/reject', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { admin_notes } = req.body;
+
+    const reqResult = await query(`SELECT * FROM radio_requests WHERE id = $1`, [id]);
+    if (reqResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Radio request not found.' });
+    }
+
+    const request = reqResult.rows[0];
+    const now = new Date().toISOString();
+
+    await query(`
+      UPDATE radio_requests
+      SET status = 'rejected', admin_notes = $1, updated_at = $2
+      WHERE id = $3
+    `, [admin_notes || 'Application requirements not met at this time.', now, id]);
+
+    // Send in-app notification to user
+    await query(`
+      INSERT INTO in_app_notifications (id, user_id, title, message, type, link, is_read, created_at)
+      VALUES ($1, $2, $3, $4, 'rejection', '/request-station', false, $5)
+    `, [
+      `notif-${Date.now()}`,
+      request.user_id,
+      `Update regarding "${request.radio_name}"`,
+      `Your radio listing request was not approved at this time. Notes: ${admin_notes || 'Requirements not met.'}`,
+      now
+    ]);
+
+    // Send rejection email
+    sendRequestRejectedEmail({
+      to: request.email,
+      name: request.full_name,
+      radioName: request.radio_name,
+      reason: admin_notes
+    }).catch(err => console.warn('[Email] Could not send rejection email:', err.message));
+
+    res.json({ message: 'Radio request rejected.' });
+  } catch (err) {
+    console.error('[SuperAdmin] Error rejecting request:', err);
+    res.status(500).json({ error: 'Failed to reject radio request.' });
+  }
+});
+
 export default router;
+

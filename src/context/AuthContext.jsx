@@ -44,7 +44,14 @@ export function AuthProvider({ children }) {
   }, [token]);
 
   const login = async (username, password) => {
+    // Step 1: Send credentials, server sends 4-digit code and returns require_otp
     const data = await api.post('/auth/login', { username, password });
+    return data;
+  };
+
+  const verifyOtp = async (email, code, type = 'login') => {
+    // Step 2: Verify 4-digit code and issue session
+    const data = await api.post('/auth/verify-code', { email, code, type });
     localStorage.setItem('radio_token', data.token);
     setToken(data.token);
     setUser(data.user);
@@ -55,6 +62,14 @@ export function AuthProvider({ children }) {
       localStorage.setItem('radio_active_station_id', data.assignedStations[0].id);
     }
     return data;
+  };
+
+  const register = async (registerData) => {
+    return await api.post('/auth/register', registerData);
+  };
+
+  const resendOtp = async (email, type = 'login') => {
+    return await api.post('/auth/resend-code', { email, type });
   };
 
   const logout = () => {
@@ -93,6 +108,9 @@ export function AuthProvider({ children }) {
         setActiveAdminStation,
         switchActiveStation,
         login,
+        verifyOtp,
+        register,
+        resendOtp,
         logout,
         updateProfile,
         loading,
