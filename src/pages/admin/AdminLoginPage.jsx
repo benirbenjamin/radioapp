@@ -97,9 +97,9 @@ export function AdminLoginPage() {
         <div className="bg-slate-900 py-8 px-6 sm:px-10 rounded-3xl border border-slate-800 shadow-2xl space-y-6">
           
           {error && (
-            <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-3 animate-in fade-in">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>{error}</span>
+            <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-start gap-3 animate-in fade-in leading-relaxed">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span className="break-words">{error}</span>
             </div>
           )}
 

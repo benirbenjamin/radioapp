@@ -18,20 +18,38 @@ export async function apiRequest(endpoint, options = {}) {
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
 
   const response = await fetch(url, {
+    credentials: 'include',
     ...options,
     headers,
   });
 
-  const contentType = response.headers.get('content-type');
+  const contentType = response.headers.get('content-type') || '';
   let data = null;
-  if (contentType && contentType.includes('application/json')) {
-    data = await response.json();
+  if (contentType.includes('application/json')) {
+    try {
+      data = await response.json();
+    } catch {
+      data = await response.text();
+    }
   } else {
     data = await response.text();
   }
 
   if (!response.ok) {
-    const errorMsg = data?.error || (typeof data === 'string' ? data : `Request failed with status ${response.status}`);
+    let errorMsg = 'An unexpected error occurred';
+    if (data && typeof data === 'object' && data.error) {
+      errorMsg = data.error;
+    } else if (typeof data === 'string') {
+      if (data.includes('Vercel Security Checkpoint') || data.includes('verifying your browser')) {
+        errorMsg = 'Vercel Security Checkpoint is blocking API calls. The Vercel Firewall / Attack Challenge Mode is active on your domain. Please disable "Attack Challenge Mode" in your Vercel Dashboard (under Security / Firewall).';
+      } else if (data.includes('<html') || data.includes('<!DOCTYPE')) {
+        errorMsg = `Server error (${response.status} ${response.statusText}). The server returned an HTML error page.`;
+      } else {
+        errorMsg = data.trim() || `Request failed with status ${response.status}`;
+      }
+    } else {
+      errorMsg = `Request failed with status ${response.status}`;
+    }
     throw new Error(errorMsg);
   }
 
