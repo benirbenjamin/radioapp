@@ -59,8 +59,8 @@ class LocalStorageAdapter {
   async query(text, params = []) {
     const trimmed = text.trim();
 
-    // DDL statements (CREATE TABLE, etc.)
-    if (/^CREATE\s+TABLE/i.test(trimmed) || /^CREATE\s+EXTENSION/i.test(trimmed)) {
+    // DDL statements (CREATE TABLE, ALTER TABLE, etc.)
+    if (/^CREATE\s+TABLE/i.test(trimmed) || /^CREATE\s+EXTENSION/i.test(trimmed) || /^ALTER\s+TABLE/i.test(trimmed)) {
       return { rows: [], rowCount: 0 };
     }
 

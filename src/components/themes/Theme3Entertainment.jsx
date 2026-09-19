@@ -11,39 +11,39 @@ export function Theme3Entertainment({ station, branding, streams, programs, nowO
       
       {/* 1. HIGH ENERGY ENTERTAINMENT HERO */}
       {sections?.player_enabled && (
-        <section className="relative px-4 sm:px-6 lg:px-8 pt-8 sm:pt-14">
+        <section className="relative px-3 sm:px-6 lg:px-8 pt-4 sm:pt-8">
           <div className="max-w-7xl mx-auto">
-            <div className="relative rounded-[2.5rem] overflow-hidden p-8 sm:p-14 bg-gradient-to-tr from-purple-950 via-slate-900 to-pink-950 border border-pink-500/20 shadow-2xl">
+            <div className="relative rounded-3xl sm:rounded-[2.5rem] overflow-hidden p-5 sm:p-8 lg:p-10 bg-gradient-to-tr from-purple-950 via-slate-950 to-pink-950 border border-pink-500/20 shadow-2xl">
               
               {/* Neon Glow Blobs */}
-              <div className="absolute top-0 right-1/4 w-96 h-96 bg-pink-600/20 rounded-full blur-[120px] pointer-events-none"></div>
-              <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+              <div className="absolute top-0 right-1/4 w-72 sm:w-96 h-72 sm:h-96 bg-pink-600/15 rounded-full blur-[100px] pointer-events-none"></div>
+              <div className="absolute bottom-0 left-1/4 w-72 sm:w-96 h-72 sm:h-96 bg-purple-600/15 rounded-full blur-[100px] pointer-events-none"></div>
 
-              <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                <div className="lg:col-span-7 space-y-6">
+              <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
+                <div className="lg:col-span-7 space-y-4 sm:space-y-5">
                   
-                  <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-pink-500/20 border border-pink-500/40 text-xs font-black uppercase tracking-widest text-pink-400">
-                    <Flame className="w-4 h-4 text-pink-500 animate-bounce" />
-                    <span>THE NON-STOP PARTY FREQUENCY</span>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-500/20 border border-pink-500/30 text-[11px] font-black uppercase tracking-wider text-pink-400">
+                    <Flame className="w-3.5 h-3.5 text-pink-500 animate-bounce" />
+                    <span>{station?.slogan ? station.slogan.toUpperCase() : 'THE NON-STOP PARTY FREQUENCY'}</span>
                   </div>
 
-                  <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black uppercase tracking-tighter leading-none bg-clip-text text-transparent bg-gradient-to-r from-white via-pink-200 to-purple-400">
+                  <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black uppercase tracking-tight text-white leading-tight break-words bg-clip-text text-transparent bg-gradient-to-r from-white via-pink-100 to-purple-300">
                     {station?.name}
                   </h1>
 
-                  <p className="text-base sm:text-lg text-slate-300 font-medium max-w-xl">
-                    {station?.description || station?.slogan}
+                  <p className="text-xs sm:text-sm text-slate-300 font-medium max-w-xl leading-relaxed">
+                    {station?.description || station?.slogan || 'Live independent radio broadcasting hits, programs, and talk.'}
                   </p>
 
                   {sections?.on_air_enabled && nowOnAir && (
-                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md flex items-center gap-4 max-w-md">
-                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white shadow-lg">
-                        <Disc className="w-7 h-7 animate-spin" />
+                    <div className="p-3 sm:p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md flex items-center gap-3.5 max-w-md">
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white shadow-md flex-shrink-0">
+                        <Disc className="w-5 h-5 animate-spin" />
                       </div>
-                      <div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-pink-400">CLUB MIX LIVE</span>
-                        <h4 className="font-extrabold text-white text-base leading-tight">{nowOnAir.title}</h4>
-                        <p className="text-xs text-slate-400">Hosted by <strong className="text-white">{nowOnAir.presenter}</strong></p>
+                      <div className="min-w-0">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-pink-400 block">NOW ON AIR</span>
+                        <h4 className="font-extrabold text-white text-sm leading-tight truncate">{nowOnAir.title}</h4>
+                        <p className="text-[11px] text-slate-400 truncate">Host: <strong className="text-white">{nowOnAir.presenter}</strong></p>
                       </div>
                     </div>
                   )}

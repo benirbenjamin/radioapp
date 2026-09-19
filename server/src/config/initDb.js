@@ -12,9 +12,16 @@ export async function initDatabase() {
       email VARCHAR(128) UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       role VARCHAR(32) NOT NULL,
+      full_name VARCHAR(128),
       created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  try {
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR(128);`);
+  } catch (e) {
+    // Column might already exist or DDL handled by storage adapter
+  }
 
   // Create Radio Stations
   await query(`

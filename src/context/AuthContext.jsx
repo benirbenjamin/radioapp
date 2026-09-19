@@ -71,6 +71,18 @@ export function AuthProvider({ children }) {
     localStorage.setItem('radio_active_station_id', station.id);
   };
 
+  const updateProfile = async (profileData) => {
+    const data = await api.put('/auth/profile', profileData);
+    if (data.token) {
+      localStorage.setItem('radio_token', data.token);
+      setToken(data.token);
+    }
+    if (data.user) {
+      setUser(data.user);
+    }
+    return data;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -82,6 +94,7 @@ export function AuthProvider({ children }) {
         switchActiveStation,
         login,
         logout,
+        updateProfile,
         loading,
         isSuperAdmin: user?.role === 'superadmin',
         isStationAdmin: user?.role === 'stationadmin',

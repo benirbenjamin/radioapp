@@ -27,15 +27,15 @@ export function Theme4NewsRadio({ station, branding, streams, programs, nowOnAir
       {/* 2. NEWSROOM HEADER & COMPACT AUDIO BAR */}
       {sections?.player_enabled && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2">
-          <div className="bg-white border-y-2 border-slate-900 py-6 px-4 sm:px-8 shadow-xs">
+          <div className="bg-white border-y-2 border-slate-900 py-4 sm:py-6 px-3 sm:px-8 shadow-xs">
             <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
               
               <div className="space-y-1 text-center lg:text-left">
-                <div className="flex items-center justify-center lg:justify-start gap-2 text-xs font-bold text-red-700 uppercase tracking-widest">
-                  <Mic2 className="w-4 h-4" />
+                <div className="flex items-center justify-center lg:justify-start gap-2 text-[11px] font-bold text-red-700 uppercase tracking-widest">
+                  <Mic2 className="w-3.5 h-3.5" />
                   <span>NATIONAL & INTERNATIONAL BROADCAST DESK</span>
                 </div>
-                <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-slate-950 break-words">
                   {station?.name}
                 </h1>
                 <p className="text-xs text-slate-500 max-w-lg">
@@ -43,7 +43,7 @@ export function Theme4NewsRadio({ station, branding, streams, programs, nowOnAir
                 </p>
               </div>
 
-              <div className="w-full lg:w-[480px]">
+              <div className="w-full lg:w-[420px] flex-shrink-0">
                 <RadioPlayer variant="news" />
               </div>
 

@@ -11,20 +11,20 @@ export function Theme5Minimal({ station, branding, streams, programs, nowOnAir, 
       
       {/* 1. MINIMAL HERO SECTION */}
       {sections?.player_enabled && (
-        <section className="pt-16 sm:pt-28 px-6 sm:px-12 max-w-5xl mx-auto text-center space-y-8">
-          <div className="space-y-4">
-            <span className="text-xs tracking-[0.25em] uppercase font-semibold text-slate-400">
+        <section className="pt-8 sm:pt-16 px-4 sm:px-8 max-w-5xl mx-auto text-center space-y-6">
+          <div className="space-y-3">
+            <span className="text-[11px] tracking-[0.25em] uppercase font-semibold text-slate-400">
               Live Broadcast Experience
             </span>
-            <h1 className="text-4xl sm:text-6xl font-normal tracking-tight text-slate-900">
+            <h1 className="text-3xl sm:text-5xl font-normal tracking-tight text-slate-900 break-words">
               {station?.name}
             </h1>
-            <p className="text-base sm:text-xl text-slate-500 max-w-xl mx-auto leading-relaxed">
+            <p className="text-xs sm:text-base text-slate-500 max-w-xl mx-auto leading-relaxed">
               {station?.slogan || station?.description}
             </p>
           </div>
 
-          <div className="pt-4 max-w-2xl mx-auto">
+          <div className="pt-2 max-w-xl mx-auto">
             <RadioPlayer variant="minimal" />
           </div>
         </section>

@@ -186,7 +186,7 @@ export function PublicFooter() {
         <div className="mt-12 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
           <p>{settings?.copyright_text || `© ${new Date().getFullYear()} ${station?.name || 'Radio Station'}. All rights reserved.`}</p>
           <div className="flex items-center gap-6">
-            <span>Production-Ready Template</span>
+            <span>Official Live Stream</span>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
             <span>Broadcast Engine Active</span>
           </div>

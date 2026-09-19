@@ -53,18 +53,18 @@ export function StationDirectoryPage() {
       </header>
 
       {/* Directory Hero */}
-      <section className="relative px-4 sm:px-6 lg:px-8 py-16 sm:py-24 text-center max-w-4xl mx-auto space-y-6">
+      <section className="relative px-4 sm:px-6 lg:px-8 py-14 sm:py-20 text-center max-w-4xl mx-auto space-y-5">
         <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-bold text-indigo-400 uppercase tracking-widest">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>One Template → Infinite Radio Stations</span>
+          <span>Live Radio Broadcasting Network</span>
         </div>
 
-        <h2 className="text-4xl sm:text-6xl font-black tracking-tight text-white leading-tight">
+        <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
           Explore Live Radio Broadcasters
         </h2>
 
-        <p className="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
-          Select any radio station below to experience their custom branding, 5 distinct themes, dynamic color systems, daily broadcast schedules, and live audio streams.
+        <p className="text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
+          Tune in to premier independent radio stations broadcasting high-definition audio, curated daily shows, journalism, and live events.
         </p>
 
         {/* Search Bar */}
@@ -113,8 +113,9 @@ export function StationDirectoryPage() {
                       )}
                     </div>
 
-                    <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
-                      {station.theme ? station.theme.replace('theme', 'Theme ').replace('_', ' ') : 'Theme 1'}
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span>Live 24/7</span>
                     </span>
                   </div>
 

@@ -14,6 +14,7 @@ import {
   LogOut,
   Building2,
   Users,
+  User,
   ShieldAlert,
   ChevronDown,
   Menu,
@@ -149,7 +150,18 @@ export function AdminLayout() {
 
             {/* User info & Logout */}
             <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
-              <span className="hidden sm:inline text-xs font-bold text-slate-300">{user?.username}</span>
+              <Link
+                to="/admin/profile"
+                className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors"
+                title="Manage profile & password"
+              >
+                <div className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-[11px]">
+                  {(user?.full_name || user?.username || 'U').charAt(0).toUpperCase()}
+                </div>
+                <span className="hidden sm:inline text-xs font-bold truncate max-w-[130px]">
+                  {user?.full_name || user?.username}
+                </span>
+              </Link>
               <button
                 onClick={handleLogout}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-colors"
@@ -235,6 +247,27 @@ export function AdminLayout() {
                       </Link>
                     );
                   })}
+                </nav>
+              </div>
+
+              {/* Account Settings Navigation Group */}
+              <div>
+                <div className="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Account & Security
+                </div>
+                <nav className="space-y-1">
+                  <Link
+                    to="/admin/profile"
+                    onClick={() => setSidebarOpen(false)}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                      currentPath === '/admin/profile'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    <User className={`w-4 h-4 ${currentPath === '/admin/profile' ? 'text-white' : 'text-slate-400'}`} />
+                    <span>Profile & Password</span>
+                  </Link>
                 </nav>
               </div>
 

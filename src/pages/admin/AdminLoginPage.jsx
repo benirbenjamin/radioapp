@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Radio, Lock, User, AlertCircle, ArrowRight, ShieldCheck, Key } from 'lucide-react';
+import { Radio, Lock, User, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export function AdminLoginPage() {
   const { login } = useAuth();
@@ -24,11 +24,6 @@ export function AdminLoginPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const fillCredentials = (u, p) => {
-    setUsername(u);
-    setPassword(p);
   };
 
   return (
@@ -99,61 +94,9 @@ export function AdminLoginPage() {
             </button>
           </form>
 
-          {/* Quick Demo Fill Buttons */}
-          <div className="pt-4 border-t border-slate-800 space-y-3">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Key className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Quick Login Demo Accounts</span>
-            </div>
-
-            <div className="grid grid-cols-1 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => fillCredentials('superadmin', 'Admin123!Password')}
-                className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-left flex items-center justify-between transition-colors group"
-              >
-                <div>
-                  <span className="font-bold text-amber-400">Super Admin</span>
-                  <span className="text-[11px] text-slate-400 block">Username: superadmin</span>
-                </div>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 font-bold group-hover:bg-amber-500 group-hover:text-slate-950 transition-colors">
-                  Fill
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => fillCredentials('wave_admin', 'Admin123!Password')}
-                className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-left flex items-center justify-between transition-colors group"
-              >
-                <div>
-                  <span className="font-bold text-indigo-400">Kigali Wave 94.7 FM Admin</span>
-                  <span className="text-[11px] text-slate-400 block">Username: wave_admin</span>
-                </div>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 font-bold group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-                  Fill
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => fillCredentials('summit_admin', 'Admin123!Password')}
-                className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-left flex items-center justify-between transition-colors group"
-              >
-                <div>
-                  <span className="font-bold text-rose-400">Summit News 102.5 FM Admin</span>
-                  <span className="text-[11px] text-slate-400 block">Username: summit_admin</span>
-                </div>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 font-bold group-hover:bg-rose-500 group-hover:text-white transition-colors">
-                  Fill
-                </span>
-              </button>
-            </div>
-          </div>
-
-          <div className="text-center pt-2">
-            <a href="/" className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
-              ← Return to Stations Directory
+          <div className="text-center pt-4 border-t border-slate-800">
+            <a href="/" className="text-xs text-slate-400 hover:text-white transition-colors flex items-center justify-center gap-1.5 font-medium">
+              <span>← Return to Stations Directory</span>
             </a>
           </div>
 

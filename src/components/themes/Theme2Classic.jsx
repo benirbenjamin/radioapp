@@ -12,32 +12,32 @@ export function Theme2Classic({ station, branding, streams, programs, nowOnAir, 
       {/* 1. CLASSIC BROADCAST HERO BANNER */}
       {sections?.player_enabled && (
         <section className="bg-slate-900 text-white border-b-4" style={{ borderColor: branding?.primary_color || '#4F46E5' }}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-            <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-6 lg:gap-8">
               
-              <div className="space-y-4 max-w-2xl text-center lg:text-left">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-white/10 text-xs font-mono font-bold tracking-widest uppercase text-amber-400">
-                  <ShieldCheck className="w-4 h-4" />
+              <div className="space-y-3 max-w-2xl text-center lg:text-left">
+                <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded bg-white/10 text-[11px] font-mono font-bold tracking-widest uppercase text-amber-400">
+                  <ShieldCheck className="w-3.5 h-3.5" />
                   <span>OFFICIAL BROADCAST FREQUENCY</span>
                 </div>
 
-                <h1 className="text-3xl sm:text-5xl font-serif font-bold tracking-normal text-white">
+                <h1 className="text-2xl sm:text-4xl font-serif font-bold tracking-normal text-white break-words">
                   {station?.name}
                 </h1>
 
-                <p className="text-sm sm:text-base text-slate-300 font-normal leading-relaxed">
+                <p className="text-xs sm:text-sm text-slate-300 font-normal leading-relaxed">
                   {station?.slogan || station?.description}
                 </p>
 
                 {sections?.on_air_enabled && nowOnAir && (
-                  <div className="inline-flex items-center gap-3 px-4 py-2 rounded bg-slate-800 border border-slate-700 text-xs text-slate-300">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
-                    <span>Broadcasting: <strong className="text-white">{nowOnAir.title}</strong> with {nowOnAir.presenter} ({nowOnAir.start_time} - {nowOnAir.end_time})</span>
+                  <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded bg-slate-800/90 border border-slate-700 text-xs text-slate-300 max-w-md">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0"></span>
+                    <span className="truncate">On Air: <strong className="text-white">{nowOnAir.title}</strong> with {nowOnAir.presenter}</span>
                   </div>
                 )}
               </div>
 
-              <div className="w-full lg:w-[460px]">
+              <div className="w-full lg:w-[420px] flex-shrink-0">
                 <RadioPlayer variant="classic" />
               </div>
 

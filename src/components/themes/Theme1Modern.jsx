@@ -11,44 +11,44 @@ export function Theme1Modern({ station, branding, streams, programs, nowOnAir, c
       
       {/* 1. HERO / LIVE RADIO SECTION */}
       {sections?.player_enabled && (
-        <section className="relative pt-6 sm:pt-12 px-4 sm:px-6 lg:px-8">
+        <section className="relative pt-4 sm:pt-8 px-3 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
-            <div className="relative rounded-3xl overflow-hidden p-8 sm:p-14 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white shadow-2xl">
+            <div className="relative rounded-3xl overflow-hidden p-5 sm:p-8 lg:p-10 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white shadow-2xl">
               
               {/* Decorative background glow */}
-              <div className="absolute -right-20 -top-20 w-96 h-96 bg-[var(--primary-color)] opacity-25 rounded-full blur-3xl pointer-events-none"></div>
-              <div className="absolute -left-20 -bottom-20 w-96 h-96 bg-[var(--secondary-color)] opacity-20 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="absolute -right-20 -top-20 w-80 sm:w-96 h-80 sm:h-96 bg-[var(--primary-color)] opacity-20 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="absolute -left-20 -bottom-20 w-80 sm:w-96 h-80 sm:h-96 bg-[var(--secondary-color)] opacity-15 rounded-full blur-3xl pointer-events-none"></div>
 
-              <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+              <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
                 
-                <div className="lg:col-span-7 space-y-6">
-                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs font-bold uppercase tracking-wider text-indigo-300">
+                <div className="lg:col-span-7 space-y-4 sm:space-y-5">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[11px] font-bold uppercase tracking-wider text-indigo-300">
                     <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                     <span>Broadcasting Live 24/7</span>
                   </div>
 
-                  <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-none text-white">
+                  <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-white break-words">
                     {station?.name}
                   </h1>
 
-                  <p className="text-base sm:text-xl text-slate-300 max-w-xl leading-relaxed">
-                    {station?.description || station?.slogan}
+                  <p className="text-xs sm:text-base text-slate-300 max-w-xl leading-relaxed">
+                    {station?.description || station?.slogan || 'Independent live radio streaming hits, talk, and news.'}
                   </p>
 
                   {/* Now On Air Highlight Badge */}
                   {sections?.on_air_enabled && nowOnAir && (
-                    <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 max-w-md flex items-center gap-4">
+                    <div className="p-3 sm:p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 max-w-md flex items-center gap-3.5">
                       {nowOnAir.image_url ? (
-                        <img src={nowOnAir.image_url} alt={nowOnAir.title} className="w-14 h-14 rounded-xl object-cover" />
+                        <img src={nowOnAir.image_url} alt={nowOnAir.title} className="w-11 h-11 rounded-xl object-cover flex-shrink-0" />
                       ) : (
-                        <div className="w-14 h-14 rounded-xl bg-indigo-600/50 flex items-center justify-center text-white">
-                          <Music className="w-6 h-6" />
+                        <div className="w-11 h-11 rounded-xl bg-indigo-600/50 flex items-center justify-center text-white flex-shrink-0">
+                          <Music className="w-5 h-5" />
                         </div>
                       )}
-                      <div>
-                        <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider">NOW ON AIR</span>
-                        <h4 className="font-extrabold text-white text-base leading-tight">{nowOnAir.title}</h4>
-                        <p className="text-xs text-slate-300">with {nowOnAir.presenter} ({nowOnAir.start_time} - {nowOnAir.end_time})</p>
+                      <div className="min-w-0">
+                        <span className="text-[9px] font-bold text-red-400 uppercase tracking-wider block">NOW ON AIR</span>
+                        <h4 className="font-extrabold text-white text-sm leading-tight truncate">{nowOnAir.title}</h4>
+                        <p className="text-[11px] text-slate-300 truncate">with {nowOnAir.presenter} ({nowOnAir.start_time} - {nowOnAir.end_time})</p>
                       </div>
                     </div>
                   )}

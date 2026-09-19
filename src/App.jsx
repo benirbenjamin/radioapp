@@ -25,6 +25,7 @@ import { VideosManagerPage } from './pages/admin/VideosManagerPage';
 import { SectionsManagerPage } from './pages/admin/SectionsManagerPage';
 import { StationSettingsPage } from './pages/admin/StationSettingsPage';
 import { AnalyticsPage } from './pages/admin/AnalyticsPage';
+import { ProfilePage } from './pages/admin/ProfilePage';
 
 // Super Admin Pages
 import { StationsManagerPage } from './pages/admin/superadmin/StationsManagerPage';
@@ -135,6 +136,7 @@ export function App() {
           <Route path="sections" element={<SectionsManagerPage />} />
           <Route path="settings" element={<StationSettingsPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="profile" element={<ProfilePage />} />
 
           {/* Super Admin specific routes */}
           <Route
