@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../api/client';
 
 const StationContext = createContext(null);
@@ -7,6 +7,7 @@ const StationContext = createContext(null);
 export function StationProvider({ children, initialSlug, initialBundle = null, isCustomDomain = false }) {
   const params = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const slug = initialSlug || params.slug;
 
   const [stationBundle, setStationBundle] = useState(initialBundle);
@@ -75,6 +76,74 @@ export function StationProvider({ children, initialSlug, initialBundle = null, i
       loadStation(slug);
     }
   }, [slug, initialBundle]);
+
+  // Visitor Session Management & Telemetry
+  const getSessionId = () => {
+    try {
+      let sess = sessionStorage.getItem('radio_analytics_session_id');
+      if (!sess) {
+        sess = `sess-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+        sessionStorage.setItem('radio_analytics_session_id', sess);
+      }
+      return sess;
+    } catch {
+      return `sess-${Date.now()}`;
+    }
+  };
+
+  const getDeviceType = () => {
+    const ua = navigator.userAgent || '';
+    if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) return 'Tablet';
+    if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/i.test(ua)) return 'Mobile';
+    return 'Desktop';
+  };
+
+  const getTrafficSource = () => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const utm = urlParams.get('utm_source') || urlParams.get('ref') || urlParams.get('source');
+      if (utm) return utm;
+      return document.referrer || 'Direct';
+    } catch {
+      return 'Direct';
+    }
+  };
+
+  // Register session & pageview on station load or route navigation
+  useEffect(() => {
+    const stationId = stationBundle?.station?.id;
+    if (!stationId) return;
+
+    const sessionId = getSessionId();
+    api.post(`/stations/${stationId}/analytics/session`, {
+      session_id: sessionId,
+      traffic_source: getTrafficSource(),
+      referrer: document.referrer || '',
+      device_type: getDeviceType(),
+      page_path: location.pathname,
+    }).catch(() => {});
+  }, [stationBundle?.station?.id, location.pathname]);
+
+  // Periodic Heartbeat Ping (Time on site & Listening duration)
+  useEffect(() => {
+    const stationId = stationBundle?.station?.id;
+    if (!stationId) return;
+
+    const interval = setInterval(() => {
+      // If tab is in background and not listening to audio, skip accumulating duration
+      if (document.hidden && !isPlaying) return;
+
+      const sessionId = getSessionId();
+      api.post(`/stations/${stationId}/analytics/ping`, {
+        session_id: sessionId,
+        duration_increment: 20,
+        is_listening: isPlaying,
+        listening_increment: isPlaying ? 20 : 0,
+      }).catch(() => {});
+    }, 20000);
+
+    return () => clearInterval(interval);
+  }, [stationBundle?.station?.id, isPlaying]);
 
   // Audio element management
   useEffect(() => {

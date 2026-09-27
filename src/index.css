@@ -86,3 +86,26 @@ body {
 .rich-text li { margin-bottom: 0.25rem; }
 .rich-text a { color: var(--primary-color, #4F46E5); text-decoration: underline; }
 .rich-text img { border-radius: 0.5rem; max-width: 100%; height: auto; margin: 1.5rem auto; }
+
+/* Google AdSense - Zero Blank Space Protection */
+ins.adsbygoogle {
+  display: block;
+}
+
+ins.adsbygoogle[data-ad-status="unfilled"],
+ins.adsbygoogle:empty {
+  display: none !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  visibility: hidden !important;
+}
+
+.adsense-collapse:not(.is-ready) {
+  display: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}

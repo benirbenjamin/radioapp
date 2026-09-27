@@ -32,7 +32,7 @@ export function getTransporter() {
 export async function sendEmail({ to, subject, html, text }) {
   const resendApiKey = process.env.RESEND_API_KEY;
   const resendFrom = process.env.RESEND_FROM || 'Radio Platform <onboarding@resend.dev>';
-  const smtpFrom = process.env.SMTP_FROM || 'Radio Platform <noreply@radioplatform.io>';
+  const smtpFrom = process.env.SMTP_FROM || 'Radio Platform <noreply@benix.space>';
   const transporter = getTransporter();
   // 1. Priority 1: Resend API
   if (resendApiKey) {

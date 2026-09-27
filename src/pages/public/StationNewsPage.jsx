@@ -7,6 +7,7 @@ import { PublicFooter } from '../../components/layout/PublicFooter';
 import { PersistentPlayerBar } from '../../components/player/PersistentPlayerBar';
 import { Newspaper, Search, ArrowRight, Calendar, Eye, Tag } from 'lucide-react';
 import { api } from '../../api/client';
+import { AdSenseUnit } from '../../components/ads/AdSenseUnit';
 
 export function StationNewsPage() {
   const { station, branding } = useStation();
@@ -224,6 +225,13 @@ export function StationNewsPage() {
                 ))}
               </div>
             )}
+
+            {/* In-feed AdSense Slot (Zero blank space if unfilled) */}
+            <AdSenseUnit
+              slot="7034214536"
+              client="ca-pub-4078466828008985"
+              className="my-8"
+            />
 
             {/* Pagination Controls */}
             {pagination.totalPages > 1 && (

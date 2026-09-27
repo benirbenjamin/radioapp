@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { query } from '../config/db.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import { sendRequestApprovedEmail, sendRequestRejectedEmail } from '../utils/emailHelper.js';
+import { calculateAnalytics } from '../utils/analyticsAggregator.js';
 
 const router = express.Router();
 
@@ -21,6 +22,25 @@ function slugify(text) {
     .replace(/^-+/, '')
     .replace(/-+$/, '');
 }
+
+// GET /api/superadmin/analytics - Overall Analytics of all radios
+router.get('/analytics', async (req, res) => {
+  try {
+    const { period = 'week', startDate, endDate, stationId = 'all' } = req.query;
+
+    const analytics = await calculateAnalytics({
+      stationId,
+      period,
+      startDate,
+      endDate,
+    });
+
+    res.json(analytics);
+  } catch (err) {
+    console.error('[SuperAdmin] Error fetching overall analytics:', err);
+    res.status(500).json({ error: 'Failed to fetch platform overall analytics.' });
+  }
+});
 
 // GET /api/superadmin/stats - Global platform statistics
 router.get('/stats', async (req, res) => {

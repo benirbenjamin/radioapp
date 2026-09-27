@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Radio, Search, Sparkles, ArrowRight, Shield, Layers, Globe } from 'lucide-react';
 import { api } from '../../api/client';
+import { AdSenseUnit } from '../../components/ads/AdSenseUnit';
 
 export function StationDirectoryPage() {
   const [stations, setStations] = useState([]);
@@ -105,6 +106,15 @@ export function StationDirectoryPage() {
           />
         </div>
       </section>
+
+      {/* Directory Responsive Ad Slot (Zero blank space if unfilled) */}
+      <div className="max-w-5xl mx-auto px-4">
+        <AdSenseUnit
+          slot="7034214536"
+          client="ca-pub-4078466828008985"
+          className="my-6"
+        />
+      </div>
 
       {/* Stations Cards Grid */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">

@@ -126,7 +126,7 @@ router.get('/:stationId/domain', authenticateToken, verifyStationAccess, async (
     }
 
     const station = stationRes.rows[0];
-    const cnameTarget = process.env.PLATFORM_CNAME_TARGET || 'cname.radioplatform.io';
+    const cnameTarget = process.env.PLATFORM_CNAME_TARGET || 'cname.vercel-dns.com';
 
     res.json({
       station_id: station.id,

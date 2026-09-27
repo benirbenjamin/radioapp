@@ -1,10 +1,125 @@
 import express from 'express';
 import { query } from '../config/db.js';
 import { authenticateToken, verifyStationAccess } from '../middleware/auth.js';
+import { calculateAnalytics, normalizeTrafficSource } from '../utils/analyticsAggregator.js';
 
 const router = express.Router();
 
-// POST /api/stations/:stationId/analytics/event (Public event logging)
+/**
+ * POST /api/stations/:stationId/analytics/session
+ * Public endpoint to register or increment a visitor's session
+ */
+router.post('/:stationId/analytics/session', async (req, res) => {
+  try {
+    const { stationId } = req.params;
+    const { session_id, traffic_source, referrer, device_type, browser, os, page_path } = req.body;
+
+    if (!session_id) {
+      return res.status(400).json({ error: 'session_id is required' });
+    }
+
+    const cleanSource = normalizeTrafficSource(traffic_source, referrer);
+    const cleanDevice = device_type || 'Desktop';
+    const nowIso = new Date().toISOString();
+
+    // Check if session already registered for this station
+    const existing = await query(`
+      SELECT id, pageviews_count FROM analytics_sessions
+      WHERE session_id = $1 AND station_id = $2
+    `, [session_id, stationId]);
+
+    if (existing.rows.length > 0) {
+      // Increment pageview count
+      await query(`
+        UPDATE analytics_sessions
+        SET pageviews_count = pageviews_count + 1,
+            page_path = $1,
+            updated_at = $2
+        WHERE id = $3
+      `, [page_path || '/', nowIso, existing.rows[0].id]);
+
+      return res.json({ session_recorded: true, is_new: false });
+    }
+
+    // Insert new session
+    const id = `as-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+    await query(`
+      INSERT INTO analytics_sessions (
+        id, station_id, session_id, traffic_source, referrer, device_type,
+        browser, os, page_path, duration_seconds, is_listening, listening_seconds, pageviews_count,
+        created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0, false, 0, 1, $10, $11)
+    `, [
+      id, stationId, session_id, cleanSource, referrer || '', cleanDevice,
+      browser || null, os || null, page_path || '/', nowIso, nowIso
+    ]);
+
+    res.status(201).json({ session_recorded: true, is_new: true });
+  } catch (err) {
+    console.error('[Analytics] Error recording session:', err);
+    res.status(500).json({ error: 'Failed to record session' });
+  }
+});
+
+/**
+ * POST /api/stations/:stationId/analytics/ping
+ * Heartbeat ping from client to track active time on site and audio listening time
+ */
+router.post('/:stationId/analytics/ping', async (req, res) => {
+  try {
+    const { stationId } = req.params;
+    const { session_id, duration_increment = 20, is_listening = false, listening_increment = 0 } = req.body;
+
+    if (!session_id) {
+      return res.status(400).json({ error: 'session_id is required' });
+    }
+
+    const durInc = Math.min(120, Math.max(1, parseInt(duration_increment) || 20));
+    const listenInc = is_listening ? Math.min(120, Math.max(0, parseInt(listening_increment) || durInc)) : 0;
+    const nowIso = new Date().toISOString();
+
+    const existing = await query(`
+      SELECT id, duration_seconds, listening_seconds FROM analytics_sessions
+      WHERE session_id = $1 AND station_id = $2
+    `, [session_id, stationId]);
+
+    if (existing.rows.length > 0) {
+      const row = existing.rows[0];
+      const newDur = (parseInt(row.duration_seconds) || 0) + durInc;
+      const newListen = (parseInt(row.listening_seconds) || 0) + listenInc;
+
+      await query(`
+        UPDATE analytics_sessions
+        SET duration_seconds = $1,
+            listening_seconds = $2,
+            is_listening = $3,
+            updated_at = $4
+        WHERE id = $5
+      `, [newDur, newListen, Boolean(is_listening), nowIso, row.id]);
+
+      return res.json({ ping_recorded: true, total_duration: newDur });
+    }
+
+    // If session row missing, insert basic row
+    const id = `as-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+    await query(`
+      INSERT INTO analytics_sessions (
+        id, station_id, session_id, traffic_source, referrer, device_type,
+        duration_seconds, is_listening, listening_seconds, pageviews_count, created_at, updated_at
+      ) VALUES ($1, $2, $3, 'Direct', '', 'Desktop', $4, $5, $6, 1, $7, $8)
+    `, [id, stationId, session_id, durInc, Boolean(is_listening), listenInc, nowIso, nowIso]);
+
+    res.json({ ping_recorded: true, total_duration: durInc });
+  } catch (err) {
+    console.error('[Analytics] Error recording ping:', err);
+    res.status(500).json({ error: 'Failed to record ping' });
+  }
+});
+
+/**
+ * POST /api/stations/:stationId/analytics/event
+ * Public event logging (play, pause, error, article read, etc.)
+ */
 router.post('/:stationId/analytics/event', async (req, res) => {
   try {
     const { stationId } = req.params;
@@ -29,47 +144,28 @@ router.post('/:stationId/analytics/event', async (req, res) => {
   }
 });
 
-// GET /api/stations/:stationId/analytics/stats (Station Admin analytics)
+/**
+ * GET /api/stations/:stationId/analytics/stats
+ * Station Admin telemetry with time filters: today, yesterday, week, month, year, custom
+ */
 router.get('/:stationId/analytics/stats', authenticateToken, verifyStationAccess, async (req, res) => {
   try {
     const { stationId } = req.params;
+    const { period = 'week', startDate, endDate } = req.query;
 
-    // Aggregate counts
-    const [eventsRes, newsViewsRes, streamsRes, programsRes] = await Promise.all([
-      query(`SELECT event_type, COUNT(*) as count FROM analytics_events WHERE station_id = $1 GROUP BY event_type`, [stationId]),
-      query(`SELECT SUM(views_count) as total_news_views, COUNT(*) as total_articles FROM news_articles WHERE station_id = $1`, [stationId]),
-      query(`SELECT COUNT(*) as count FROM radio_streams WHERE station_id = $1 AND status = 'active'`, [stationId]),
-      query(`SELECT COUNT(*) as count FROM programs WHERE station_id = $1 AND status = 'active'`, [stationId])
-    ]);
-
-    const eventCounts = {};
-    eventsRes.rows.forEach(r => {
-      eventCounts[r.event_type] = parseInt(r.count);
+    const analytics = await calculateAnalytics({
+      stationId,
+      period,
+      startDate,
+      endDate,
     });
 
-    // Recent 7 days breakdown simulation/data
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const timeline = days.map((day, idx) => ({
-      day,
-      plays: Math.max(12, Math.round((eventCounts.play || 45) * (0.6 + (idx * 0.12)))),
-      pageviews: Math.max(30, Math.round((eventCounts.pageview || 120) * (0.7 + (idx * 0.1))))
-    }));
-
-    res.json({
-      totalPlays: eventCounts.play || 0,
-      totalPauses: eventCounts.pause || 0,
-      totalErrors: eventCounts.error || 0,
-      totalPageviews: eventCounts.pageview || 0,
-      totalNewsViews: parseInt(newsViewsRes.rows[0]?.total_news_views || 0),
-      totalArticles: parseInt(newsViewsRes.rows[0]?.total_articles || 0),
-      activeStreams: parseInt(streamsRes.rows[0]?.count || 0),
-      activePrograms: parseInt(programsRes.rows[0]?.count || 0),
-      timeline
-    });
+    res.json(analytics);
   } catch (err) {
-    console.error('[Analytics] Error fetching stats:', err);
+    console.error('[Analytics] Error fetching station stats:', err);
     res.status(500).json({ error: 'Failed to fetch analytics statistics.' });
   }
 });
 
 export default router;
+

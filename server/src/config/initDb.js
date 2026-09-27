@@ -261,6 +261,27 @@ export async function initDatabase() {
     );
   `);
 
+  // Create Analytics Sessions (Tracks visitor traffic source and estimated time spent)
+  await query(`
+    CREATE TABLE IF NOT EXISTS analytics_sessions (
+      id VARCHAR(64) PRIMARY KEY,
+      station_id VARCHAR(64) NOT NULL,
+      session_id VARCHAR(64) NOT NULL,
+      traffic_source VARCHAR(128) DEFAULT 'Direct',
+      referrer TEXT,
+      device_type VARCHAR(32) DEFAULT 'Desktop',
+      browser VARCHAR(64),
+      os VARCHAR(64),
+      page_path VARCHAR(256),
+      duration_seconds INT DEFAULT 0,
+      is_listening BOOLEAN DEFAULT FALSE,
+      listening_seconds INT DEFAULT 0,
+      pageviews_count INT DEFAULT 1,
+      created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
   // Create Audit Logs
   await query(`
     CREATE TABLE IF NOT EXISTS audit_logs (
@@ -344,7 +365,7 @@ async function autoSeedIfEmpty() {
   await query(`
     INSERT INTO users (id, username, email, password_hash, role)
     VALUES ($1, $2, $3, $4, $5)
-  `, ['user-superadmin', 'superadmin', 'admin@radioplatform.io', defaultPasswordHash, 'superadmin']);
+  `, ['user-superadmin', 'superadmin', 'admin@benix.space', defaultPasswordHash, 'superadmin']);
 
   // 2. Seed Station 1 Admin: wave_admin
   await query(`
@@ -633,5 +654,111 @@ async function autoSeedIfEmpty() {
     'electronic, edm, club music, dj mix, house music, radio stream'
   ]);
 
-  console.log('[DB] Seeding complete! Super Admin and 3 demo stations are ready.');
+  // Seed realistic analytics sessions & telemetry if empty
+  await seedAnalyticsSessions([s1Id, s2Id, s3Id]);
+
+  console.log('[DB] Seeding complete! Super Admin, 3 demo stations, and analytics telemetry are ready.');
 }
+
+async function seedAnalyticsSessions(stationIds) {
+  try {
+    const existing = await query(`SELECT COUNT(*) as count FROM analytics_sessions`);
+    if (parseInt(existing.rows[0]?.count || 0) > 0) {
+      return;
+    }
+
+    console.log('[DB] Seeding realistic analytics sessions and telemetry...');
+
+    const sources = [
+      { name: 'Google Search', weight: 30, referrer: 'https://www.google.com/' },
+      { name: 'Direct', weight: 25, referrer: '' },
+      { name: 'Facebook', weight: 15, referrer: 'https://m.facebook.com/' },
+      { name: 'WhatsApp', weight: 12, referrer: 'whatsapp://' },
+      { name: 'Instagram', weight: 8, referrer: 'https://l.instagram.com/' },
+      { name: 'X (Twitter)', weight: 5, referrer: 'https://t.co/' },
+      { name: 'YouTube', weight: 3, referrer: 'https://www.youtube.com/' },
+      { name: 'Platform Directory', weight: 2, referrer: 'https://radio.benix.space/' },
+    ];
+
+    const devices = [
+      { type: 'Mobile', weight: 65 },
+      { type: 'Desktop', weight: 28 },
+      { type: 'Tablet', weight: 7 },
+    ];
+
+    const pickWeighted = (items) => {
+      const total = items.reduce((acc, i) => acc + i.weight, 0);
+      let r = Math.random() * total;
+      for (const item of items) {
+        if (r < item.weight) return item;
+        r -= item.weight;
+      }
+      return items[0];
+    };
+
+    const pages = ['/', '/schedule', '/news', '/contact', '/videos'];
+    const now = Date.now();
+
+    for (const stationId of stationIds) {
+      // Generate 75-100 sessions distributed across today, yesterday, past week, past month
+      const count = 90;
+      for (let i = 0; i < count; i++) {
+        let ageMs;
+        const bucket = Math.random();
+        if (bucket < 0.20) {
+          // Today (past 0 to 18 hours)
+          ageMs = Math.random() * 18 * 3600 * 1000;
+        } else if (bucket < 0.40) {
+          // Yesterday (24 to 48 hours ago)
+          ageMs = (24 + Math.random() * 24) * 3600 * 1000;
+        } else if (bucket < 0.75) {
+          // Past week (2 to 7 days ago)
+          ageMs = (2 + Math.random() * 5) * 24 * 3600 * 1000;
+        } else {
+          // Past month (7 to 30 days ago)
+          ageMs = (7 + Math.random() * 23) * 24 * 3600 * 1000;
+        }
+
+        const createdAt = new Date(now - ageMs).toISOString();
+        const sourceObj = pickWeighted(sources);
+        const deviceObj = pickWeighted(devices);
+        const durationSec = Math.floor(45 + Math.random() * 1400); // 45s to 24m
+        const isListening = Math.random() < 0.68;
+        const listeningSec = isListening ? Math.floor(durationSec * (0.6 + Math.random() * 0.38)) : 0;
+        const pageviews = Math.floor(1 + Math.random() * 4);
+        const page = pages[Math.floor(Math.random() * pages.length)];
+
+        const sessDbId = `as-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+        const sessToken = `sess-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+
+        await query(`
+          INSERT INTO analytics_sessions (
+            id, station_id, session_id, traffic_source, referrer, device_type,
+            page_path, duration_seconds, is_listening, listening_seconds, pageviews_count,
+            created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        `, [
+          sessDbId, stationId, sessToken, sourceObj.name, sourceObj.referrer, deviceObj.type,
+          page, durationSec, isListening, listeningSec, pageviews, createdAt, createdAt
+        ]);
+
+        // Insert matching play event if listening
+        if (isListening) {
+          await query(`
+            INSERT INTO analytics_events (id, station_id, event_type, event_data, created_at)
+            VALUES ($1, $2, 'play', $3, $4)
+          `, [`evt-${sessDbId}-p`, stationId, JSON.stringify({ session_id: sessToken, stream_name: 'Main High Definition' }), createdAt]);
+        }
+
+        // Insert pageview event
+        await query(`
+          INSERT INTO analytics_events (id, station_id, event_type, event_data, created_at)
+          VALUES ($1, $2, 'pageview', $3, $4)
+        `, [`evt-${sessDbId}-v`, stationId, JSON.stringify({ session_id: sessToken, path: page }), createdAt]);
+      }
+    }
+  } catch (err) {
+    console.warn('[DB] Could not seed analytics sessions:', err.message);
+  }
+}
+

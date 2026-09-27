@@ -10,6 +10,7 @@ import { Theme2Classic } from '../../components/themes/Theme2Classic';
 import { Theme3Entertainment } from '../../components/themes/Theme3Entertainment';
 import { Theme4NewsRadio } from '../../components/themes/Theme4NewsRadio';
 import { Theme5Minimal } from '../../components/themes/Theme5Minimal';
+import { AdSenseUnit } from '../../components/ads/AdSenseUnit';
 
 export function StationHomePage() {
   const {
@@ -83,6 +84,10 @@ export function StationHomePage() {
         <div>
           <PublicNavbar />
           <main>{renderTheme()}</main>
+          {/* Responsive AdSense Unit (Collapses to 0px if unfilled) */}
+          <div className="max-w-5xl mx-auto px-4">
+            <AdSenseUnit slot="7034214536" client="ca-pub-4078466828008985" className="my-6" />
+          </div>
         </div>
         <PublicFooter />
         <PersistentPlayerBar />

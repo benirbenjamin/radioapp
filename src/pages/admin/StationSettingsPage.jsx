@@ -361,11 +361,11 @@ export function StationSettingsPage() {
                     <span>Target / Points To:</span>
                     <div className="flex items-center gap-1.5">
                       <span className="font-mono text-slate-900 font-bold text-[11px]">
-                        {domainConfig.dns_instructions?.cname_record?.target || 'cname.radioplatform.io'}
+                        {domainConfig.dns_instructions?.cname_record?.target || 'cname.vercel-dns.com'}
                       </span>
                       <button
                         type="button"
-                        onClick={() => handleCopy(domainConfig.dns_instructions?.cname_record?.target || 'cname.radioplatform.io')}
+                        onClick={() => handleCopy(domainConfig.dns_instructions?.cname_record?.target || 'cname.vercel-dns.com')}
                         className="text-slate-400 hover:text-indigo-600 transition-colors"
                         title="Copy Target"
                       >

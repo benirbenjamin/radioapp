@@ -54,7 +54,7 @@ export function AdminLayout() {
 
   // Super admin specific menu items
   const superAdminNavItems = [
-    { label: 'Platform Overview', path: '/admin/superadmin/stats', icon: BarChart3 },
+    { label: 'Overall Analytics', path: '/admin/superadmin/stats', icon: BarChart3 },
     { label: 'Radio Requests', path: '/admin/superadmin/requests', icon: Inbox },
     { label: 'Radio Stations', path: '/admin/superadmin/stations', icon: Building2 },
     { label: 'Administrators', path: '/admin/superadmin/admins', icon: Users },

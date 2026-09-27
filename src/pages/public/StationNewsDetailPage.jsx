@@ -7,6 +7,8 @@ import { PublicFooter } from '../../components/layout/PublicFooter';
 import { PersistentPlayerBar } from '../../components/player/PersistentPlayerBar';
 import { Calendar, Eye, ArrowLeft, Share2, Facebook, Twitter, MessageCircle, Newspaper } from 'lucide-react';
 import { api } from '../../api/client';
+import { ArticleContentWithAds } from '../../components/ads/ArticleContentWithAds';
+import { AdSenseUnit } from '../../components/ads/AdSenseUnit';
 
 export function StationNewsDetailPage() {
   const { articleSlug } = useParams();
@@ -147,10 +149,17 @@ export function StationNewsDetailPage() {
                   </p>
                 )}
 
-                {/* Full Rich Content HTML */}
-                <div
-                  className="rich-text text-base sm:text-lg text-[var(--text-color)] leading-relaxed space-y-4"
-                  dangerouslySetInnerHTML={{ __html: article.content_html }}
+                {/* Full Rich Content HTML with Scroll-Injected Paragraph Ads */}
+                <ArticleContentWithAds
+                  html={article.content_html}
+                  className="text-base sm:text-lg text-[var(--text-color)] leading-relaxed space-y-4"
+                />
+
+                {/* In-Article Bottom Ad Slot */}
+                <AdSenseUnit
+                  slot="7034214536"
+                  client="ca-pub-4078466828008985"
+                  className="my-8"
                 />
 
                 {/* Related Articles */}

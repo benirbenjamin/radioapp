@@ -28,6 +28,7 @@ class LocalStorageAdapter {
       homepage_sections: [],
       station_settings: [],
       analytics_events: [],
+      analytics_sessions: [],
       audit_logs: [],
       verification_codes: [],
       radio_requests: [],

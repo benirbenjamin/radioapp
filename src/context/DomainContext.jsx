@@ -7,8 +7,9 @@ const DomainContext = createContext(null);
 const PLATFORM_HOSTS = [
   'localhost',
   '127.0.0.1',
-  'radioplatform.io',
-  'www.radioplatform.io'
+  'radio.benix.space',
+  'benix.space',
+  'www.benix.space'
 ];
 
 export function DomainProvider({ children }) {
