@@ -92,15 +92,22 @@ export function RequestStationPage() {
     setError(null);
 
     try {
+      const applicantName = names.trim() || user?.full_name || '';
+      const applicantPhone = phonenumber.trim() || user?.phone || '';
+      const applicantEmail = email.trim() || user?.email || '';
+
       const payload = {
         radio_name: radioName.trim(),
         slogan: slogan.trim(),
         radio_logo_link: radioLogoLink.trim(),
+        logo_url: radioLogoLink.trim(),
         description: description.trim(),
         stream_url: streamUrl.trim(),
-        names: names.trim() || user?.full_name,
-        email: email.trim() || user?.email,
-        phonenumber: phonenumber.trim() || user?.phone,
+        names: applicantName,
+        full_name: applicantName,
+        phonenumber: applicantPhone,
+        phone: applicantPhone,
+        email: applicantEmail,
       };
 
       const result = await api.post('/requests/submit', payload);
@@ -108,6 +115,7 @@ export function RequestStationPage() {
       setSubmittedRequestData(result.request || payload);
       loadMyRequests();
     } catch (err) {
+      console.error('[RequestStationPage] Error submitting request:', err);
       setError(err.message || 'Failed to submit radio request. Please check your data and try again.');
     } finally {
       setLoading(false);

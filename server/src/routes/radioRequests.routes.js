@@ -30,44 +30,100 @@ router.post('/submit', authenticateToken, async (req, res) => {
     const requestId = `req-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
     const now = new Date().toISOString();
 
-    // 1. Insert into radio_requests
-    await query(`
-      INSERT INTO radio_requests (
-        id, user_id, email, names, phonenumber, radio_name, slogan,
-        radio_logo_link, description, stream_url, status, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-    `, [
-      requestId,
-      userId,
-      applicantEmail,
-      applicantName,
-      applicantPhone,
-      radio_name,
-      slogan || null,
-      radio_logo_link || null,
-      description || null,
-      stream_url || null,
-      'pending',
-      now,
-      now
-    ]);
+    // 1. Insert into radio_requests with automatic column schema compatibility
+    try {
+      await query(`
+        INSERT INTO radio_requests (
+          id, user_id, email, names, full_name, phonenumber, phone, radio_name, slogan,
+          radio_logo_link, logo_url, description, stream_url, status, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      `, [
+        requestId,
+        userId,
+        applicantEmail,
+        applicantName,
+        applicantName,
+        applicantPhone,
+        applicantPhone,
+        radio_name,
+        slogan || null,
+        radio_logo_link || null,
+        radio_logo_link || null,
+        description || null,
+        stream_url || null,
+        'pending',
+        now,
+        now
+      ]);
+    } catch (insertErr) {
+      console.warn('[Requests] Full schema insert warning, trying fallback schemas:', insertErr.message);
+      try {
+        // Fallback for tables with full_name, phone, logo_url (initial Postgres definition)
+        await query(`
+          INSERT INTO radio_requests (
+            id, user_id, email, full_name, phone, radio_name, slogan,
+            logo_url, description, stream_url, status, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        `, [
+          requestId,
+          userId,
+          applicantEmail,
+          applicantName,
+          applicantPhone,
+          radio_name,
+          slogan || null,
+          radio_logo_link || null,
+          description || null,
+          stream_url || null,
+          'pending',
+          now,
+          now
+        ]);
+      } catch (fallbackErr) {
+        // Fallback for tables with names, phonenumber, radio_logo_link
+        await query(`
+          INSERT INTO radio_requests (
+            id, user_id, email, names, phonenumber, radio_name, slogan,
+            radio_logo_link, description, stream_url, status, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        `, [
+          requestId,
+          userId,
+          applicantEmail,
+          applicantName,
+          applicantPhone,
+          radio_name,
+          slogan || null,
+          radio_logo_link || null,
+          description || null,
+          stream_url || null,
+          'pending',
+          now,
+          now
+        ]);
+      }
+    }
 
-    // 2. Insert In-App Notification for Super Admin
-    const notifId = `notif-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-    await query(`
-      INSERT INTO in_app_notifications (
-        id, user_id, title, message, type, link, is_read, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-    `, [
-      notifId,
-      null,
-      `New Radio Listing Request: ${radio_name}`,
-      `${applicantName} submitted an application to list "${radio_name}". Review details and assign station administrator.`,
-      'station_request',
-      '/admin/superadmin/requests',
-      false,
-      now
-    ]);
+    // 2. Insert In-App Notification for Super Admin (non-blocking)
+    try {
+      const notifId = `notif-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+      await query(`
+        INSERT INTO in_app_notifications (
+          id, user_id, title, message, type, link, is_read, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `, [
+        notifId,
+        null,
+        `New Radio Listing Request: ${radio_name}`,
+        `${applicantName} submitted an application to list "${radio_name}". Review details and assign station administrator.`,
+        'station_request',
+        '/admin/superadmin/requests',
+        false,
+        now
+      ]);
+    } catch (notifErr) {
+      console.warn('[Requests] Could not record superadmin in-app notification:', notifErr.message);
+    }
 
     // 3. Send confirmation email to applicant
     sendRequestSubmittedEmail({
@@ -96,10 +152,13 @@ router.post('/submit', authenticateToken, async (req, res) => {
       user_id: userId,
       email: applicantEmail,
       names: applicantName,
+      full_name: applicantName,
       phonenumber: applicantPhone,
+      phone: applicantPhone,
       radio_name,
       slogan,
       radio_logo_link,
+      logo_url: radio_logo_link,
       description,
       stream_url,
       status: 'pending',
@@ -113,7 +172,10 @@ router.post('/submit', authenticateToken, async (req, res) => {
     });
   } catch (err) {
     console.error('[Requests] Submission error:', err);
-    res.status(500).json({ error: 'Failed to submit radio listing request.' });
+    res.status(500).json({
+      error: 'Failed to submit radio listing request.',
+      details: err.message
+    });
   }
 });
 
@@ -126,7 +188,17 @@ router.get('/my', authenticateToken, async (req, res) => {
       ORDER BY created_at DESC
     `, [req.user.id]);
 
-    res.json(result.rows);
+    const normalized = (result.rows || []).map(r => ({
+      ...r,
+      names: r.names || r.full_name || '',
+      full_name: r.full_name || r.names || '',
+      phonenumber: r.phonenumber || r.phone || '',
+      phone: r.phone || r.phonenumber || '',
+      radio_logo_link: r.radio_logo_link || r.logo_url || '',
+      logo_url: r.logo_url || r.radio_logo_link || ''
+    }));
+
+    res.json(normalized);
   } catch (err) {
     console.error('[Requests] Error fetching my requests:', err);
     res.status(500).json({ error: 'Failed to fetch your requests.' });

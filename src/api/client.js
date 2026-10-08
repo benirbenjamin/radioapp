@@ -37,8 +37,14 @@ export async function apiRequest(endpoint, options = {}) {
 
   if (!response.ok) {
     let errorMsg = 'An unexpected error occurred';
-    if (data && typeof data === 'object' && data.error) {
-      errorMsg = data.error;
+    if (data && typeof data === 'object') {
+      if (data.error && (data.details || data.message) && data.error !== (data.details || data.message)) {
+        errorMsg = `${data.error} (${data.details || data.message})`;
+      } else if (data.error) {
+        errorMsg = data.error;
+      } else if (data.message) {
+        errorMsg = data.message;
+      }
     } else if (typeof data === 'string') {
       if (data.includes('Vercel Security Checkpoint') || data.includes('verifying your browser')) {
         errorMsg = 'Vercel Security Checkpoint is blocking API calls. The Vercel Firewall / Attack Challenge Mode is active on your domain. Please disable "Attack Challenge Mode" in your Vercel Dashboard (under Security / Firewall).';

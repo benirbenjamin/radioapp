@@ -340,7 +340,16 @@ router.get('/requests', async (req, res) => {
       SELECT * FROM radio_requests
       ORDER BY created_at DESC
     `);
-    res.json(result.rows);
+    const normalized = (result.rows || []).map(r => ({
+      ...r,
+      names: r.names || r.full_name || '',
+      full_name: r.full_name || r.names || '',
+      phonenumber: r.phonenumber || r.phone || '',
+      phone: r.phone || r.phonenumber || '',
+      radio_logo_link: r.radio_logo_link || r.logo_url || '',
+      logo_url: r.logo_url || r.radio_logo_link || ''
+    }));
+    res.json(normalized);
   } catch (err) {
     console.error('[SuperAdmin] Error fetching radio requests:', err);
     res.status(500).json({ error: 'Failed to fetch radio requests.' });
@@ -372,6 +381,9 @@ router.put('/requests/:id/approve', async (req, res) => {
     }
 
     const now = new Date().toISOString();
+    const logoUrl = request.logo_url || request.radio_logo_link || null;
+    const phone = request.phone || request.phonenumber || '';
+    const applicantName = request.names || request.full_name || '';
 
     // 1. Create Radio Station
     await query(`
@@ -393,7 +405,7 @@ router.put('/requests/:id/approve', async (req, res) => {
         id, station_id, theme, logo_url, primary_color, secondary_color, accent_color,
         background_color, surface_color, text_color, muted_color, header_color, footer_color, font_family
       ) VALUES ($1, $2, 'theme1_modern', $3, '#4F46E5', '#06B6D4', '#F59E0B', '#FFFFFF', '#F8FAFC', '#0F172A', '#64748B', '#FFFFFF', '#0F172A', 'Inter')
-    `, [`brand-${Date.now()}`, stationId, request.logo_url || null]);
+    `, [`brand-${Date.now()}`, stationId, logoUrl]);
 
     // 3. Initialize Homepage Sections
     await query(`
@@ -408,7 +420,7 @@ router.put('/requests/:id/approve', async (req, res) => {
     `, [
       `set-${Date.now()}`,
       stationId,
-      request.phone,
+      phone,
       request.email,
       `© ${new Date().getFullYear()} ${request.radio_name}. All Rights Reserved.`,
       `${request.radio_name} | Live Online Radio`,
@@ -434,12 +446,20 @@ router.put('/requests/:id/approve', async (req, res) => {
       VALUES ($1, $2, $3)
     `, [`sa-${Date.now()}`, request.user_id, stationId]);
 
-    // 8. Update Request status to approved
-    await query(`
-      UPDATE radio_requests
-      SET status = 'approved', station_id = $1, updated_at = $2
-      WHERE id = $3
-    `, [stationId, now, id]);
+    // 8. Update Request status to approved (with fallback)
+    try {
+      await query(`
+        UPDATE radio_requests
+        SET status = 'approved', station_id = $1, updated_at = $2
+        WHERE id = $3
+      `, [stationId, now, id]);
+    } catch (e) {
+      await query(`
+        UPDATE radio_requests
+        SET status = 'approved', updated_at = $1
+        WHERE id = $2
+      `, [now, id]);
+    }
 
     // 9. Send In-App Notification to User
     await query(`
